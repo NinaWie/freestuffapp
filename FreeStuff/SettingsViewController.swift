@@ -8,6 +8,11 @@ import MapKit
 import CoreLocation
 import Contacts
 
+let default_switches: [String: Bool] = [
+    "showGoodsSwitch": true,
+    "showFoodSwitch": true,
+    "clusterPinSwitch": false
+]
 
 class SettingsViewController: UITableViewController {
     
@@ -15,21 +20,13 @@ class SettingsViewController: UITableViewController {
     @IBOutlet weak var pushSwitch: UISwitch!
     @IBOutlet weak var reportProblemButton: UIButton!
     @IBOutlet weak var radiusSlider: UISlider!
-    @IBOutlet weak var retiredSwitch: UISwitch!
+    @IBOutlet weak var showGoodsSwitch: UISwitch!
+    @IBOutlet weak var showFoodSwitch: UISwitch!
     @IBOutlet weak var clusterPinsSwitch: UISwitch!
-    @IBOutlet weak var markedSwitch: UISwitch!
-    @IBOutlet weak var visitedSwitch: UISwitch!
-    @IBOutlet weak var unvisitedSwitch: UISwitch!
     
     static var hasChanged = false
     static var clusterHasChanged = false
-    let default_switches: [String: Bool] = [
-        "unvisitedSwitch": true,
-        "visitedSwitch": true,
-        "markedSwitch": true,
-        "retiredSwitch": false,
-        "clusterPinSwitch": false
-    ]
+
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -58,19 +55,12 @@ class SettingsViewController: UITableViewController {
         clusterPinsSwitch.isOn = user_settings.value(forKey: "clusterPinSwitch") as? Bool ?? default_switches["clusterPinSwitch"] as! Bool
         clusterPinsSwitch.addTarget(self, action: #selector(clusterPins), for: .valueChanged)
         // Machine status switches
-        // 1) unvisited switch
-        unvisitedSwitch.isOn = user_settings.value(forKey: "unvisitedSwitch") as? Bool ?? default_switches["unvisitedSwitch"] as! Bool
-        unvisitedSwitch.addTarget(self, action: #selector(showUnvisitedMachines), for: .valueChanged)
+        // 1) goods switch
+        showGoodsSwitch.isOn = user_settings.value(forKey: "showGoodsSwitch") as? Bool ?? default_switches["showGoodsSwitch"] as! Bool
+        showGoodsSwitch.addTarget(self, action: #selector(showGoods), for: .valueChanged)
         // 2) visied switch
-        visitedSwitch.isOn = user_settings.value(forKey: "visitedSwitch") as? Bool ?? default_switches["visitedSwitch"] as! Bool
-        visitedSwitch.addTarget(self, action: #selector(showVisitedMachines), for: .valueChanged)
-        // 3) marked switch
-        markedSwitch.isOn = user_settings.value(forKey: "markedSwitch") as? Bool ?? default_switches["markedSwitch"] as! Bool
-        markedSwitch.addTarget(self, action: #selector(showMarkedMachines), for: .valueChanged)
-        // 4) retired switch
-        retiredSwitch.isOn = user_settings.value(forKey: "retiredSwitch") as? Bool ?? default_switches["retiredSwitch"] as! Bool
-        retiredSwitch.addTarget(self, action: #selector(showRetiredMachines), for: .valueChanged)
-        
+        showFoodSwitch.isOn = user_settings.value(forKey: "showFoodSwitch") as? Bool ?? default_switches["showFoodSwitch"] as! Bool
+        showFoodSwitch.addTarget(self, action: #selector(showFood), for: .valueChanged)
     }
     
     @objc func reportProblem (sender: UIButton!){
@@ -80,17 +70,11 @@ class SettingsViewController: UITableViewController {
         UIApplication.shared.openURL(URL(string:mailtostring )!)
     }
     // Functions for Switches
-    @objc func showUnvisitedMachines(sender:UISwitch!) {
-        userdefauls_helper(defaultsKey: "unvisitedSwitch", isOn: sender.isOn)
+    @objc func showGoods(sender:UISwitch!) {
+        userdefauls_helper(defaultsKey: "showGoodsSwitch", isOn: sender.isOn)
     }
-    @objc func showVisitedMachines(sender:UISwitch!) {
-        userdefauls_helper(defaultsKey: "visitedSwitch", isOn: sender.isOn)
-    }
-    @objc func showMarkedMachines(sender:UISwitch!) {
-        userdefauls_helper(defaultsKey: "markedSwitch", isOn: sender.isOn)
-    }
-    @objc func showRetiredMachines(sender:UISwitch!) {
-        userdefauls_helper(defaultsKey: "retiredSwitch", isOn: sender.isOn)
+    @objc func showFood(sender:UISwitch!) {
+        userdefauls_helper(defaultsKey: "showFoodSwitch", isOn: sender.isOn)
     }
     @objc func clusterPins(sender:UISwitch!) {
         userdefauls_helper(defaultsKey: "clusterPinSwitch", isOn: sender.isOn)
@@ -153,7 +137,7 @@ class SettingsViewController: UITableViewController {
             return "Send push notification if a new posting is less than \(Int(self.radiusSlider.value)) km away. Location services must be set to 'Always' in settings. Attention: The app must be opened regularly to keep the location updates running."
         }
         if section == 2{
-            return "Tell us if 1) there is a problem wit the app, 2) if you found a new machine that is not listed, or 3) a machine has changed"
+            return "Tell us if there is a problem with the app"
         }
         return ""
     }

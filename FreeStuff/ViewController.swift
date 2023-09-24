@@ -35,14 +35,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
     var pinIdDict : [String:Int] = [:]
     var selectedPin: Artwork?
     
-    let default_switches: [String: Bool] = [
-        "unvisitedSwitch": true,
-        "visitedSwitch": true,
-        "markedSwitch": true,
-        "retiredSwitch": false,
-        "clusterPinSwitch": false
-    ]
-    
     // Searchbar variables
     let searchController = UISearchController(searchResultsController: nil)
     var filteredArtworks: [Artwork] = []
@@ -130,7 +122,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
     
     func addAnnotationsIteratively() {
-        let relevantUserDefauls : [String] = ["unvisitedSwitch", "visitedSwitch", "markedSwitch", "retiredSwitch", ]
+        let relevantUserDefauls : [String] = ["showGoodsSwitch", "showFoodSwitch"]
         var includedStates : [String] = []
         for userdefault in relevantUserDefauls {
             let user_settings = UserDefaults.standard
@@ -142,11 +134,10 @@ class ViewController: UIViewController, UITextFieldDelegate {
         }
 
         for artwork in artworks {
-            if (includedStates.contains(artwork.status)) && (PennyMap.view(for: artwork) == nil) {
-            //  Artwork should be visible but is currently not visible
+            print(artwork.title)
+            if (includedStates.contains(artwork.status) || artwork.status == "unvisited") { // TODO!!!
                     PennyMap.addAnnotation(artwork)
-            } else if (!includedStates.contains(artwork.status)) && (PennyMap.view(for: artwork) != nil)  {
-                //  Artwork should not be visible but is currently not visible
+            } else if (!includedStates.contains(artwork.status)) {
                 PennyMap.removeAnnotation(artwork)
             }
         }
@@ -338,57 +329,20 @@ class ViewController: UIViewController, UITextFieldDelegate {
     // To load machine locations from JSON
     @available(iOS 13.0, *)
     func loadInitialData() {
-        // Parse the geoJSON data from all_locations.json
-        guard let fileName = Bundle.main.path(forResource: "all_locations", ofType: "json")
-            else { return }
-        let artworkData = try? Data(contentsOf: URL(fileURLWithPath: fileName))
-        
-        do {
-          // 2
-          let features = try MKGeoJSONDecoder()
-            .decode(artworkData!)
-            .compactMap { $0 as? MKGeoJSONFeature }
-          let validWorks = features.compactMap(Artwork.init)
-          artworks.append(contentsOf: validWorks)
-        // put IDs into a dictionary
-            for (ind, pin) in artworks.enumerated(){
-                pinIdDict[pin.id] = ind
-            }
-        } catch {
-          print("Unexpected error: \(error).")
-        }
-        
         // load from server
-        let link_to_json = "http://37.120.179.15:8000/server_locations.json"
+        let link_to_json = "http://37.120.179.15:8000/freestuff/postings.json"
         guard let json_url = URL(string: link_to_json) else { return }
         do{
             let serverJsonData = try Data(contentsOf: json_url, options:.mappedIfSafe)
-//            // print json for debugging
-//            let jsonResult = try JSONSerialization.jsonObject(with: serverJsonData, options: .mutableLeaves)
-//            print(jsonResult)
             let serverJsonAsMap = try MKGeoJSONDecoder()
-              .decode(serverJsonData)
-              .compactMap { $0 as? MKGeoJSONFeature }
+                .decode(serverJsonData)
+                .compactMap { $0 as? MKGeoJSONFeature }
             // transform to Artwork objects
             let pinsFromServer = serverJsonAsMap.compactMap(Artwork.init)
-            var pinsFromServerList: [Artwork] = []
-            pinsFromServerList.append(contentsOf: pinsFromServer)
-            
-            // update pins
-            for pin in pinsFromServerList{
-                // Case 1: pin already exists
-                let pinIndex = pinIdDict[pin.id]
-                if (pinIndex != nil){
-                    // overwrite the pin in the list
-                    artworks[pinIndex!] = pin
-                }
-                // Case 2: pin is new
-                else{
-                    // add to list and to dictionary
-                    artworks.append(pin)
-                    pinIdDict[pin.id] = artworks.count - 1
-                }
-            }
+            artworks.append(contentsOf: pinsFromServer)
+            for (ind, pin) in artworks.enumerated(){
+                            pinIdDict[pin.id] = ind
+                        }
         }
         catch{
             print("Error in loading updates from server", error)

@@ -1,15 +1,15 @@
 //
-//  PennyMeTests.swift
-//  PennyMeTests
+//  FreeStuffTests.swift
+//  FreeStuffTests
 //
 //  Created by Jannis Born on 11.08.19.
 //  Copyright © 2019 Jannis Born. All rights reserved.
 //
 
 import XCTest
-@testable import PennyMe
+@testable import FreeStuff
 
-class PennyMeTests: XCTestCase {
+class FreeStuffTests: XCTestCase {
 
     override func setUp() {
         // Put setup code here. This method is called before the invocation of each test method in the class.
