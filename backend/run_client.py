@@ -3,17 +3,13 @@ import os
 import pandas as pd
 import asyncio
 from telethon import TelegramClient
-from data_preprocessing import create_geojson, current_geojson, TIME_FORMAT
+from data_preprocessing import create_geojson, current_geojson, TIME_FORMAT, last_update
 from utils import merge_rows_postprocessing, optimize_img_file_size
 
 IMG_OUT_PATH = "../../images/freestuff/images"
 ids_in_use = [
     int(i.split(".")[0]) for i in os.listdir(IMG_OUT_PATH) if i[0] != "."
 ]
-last_update = pd.to_datetime(
-    current_geojson["time_posted"], format=TIME_FORMAT, utc=True
-).max()
-print("LAST UPDATE", last_update)
 
 with open(os.path.join("geodata", "place_names.json"), "r") as infile:
     plz_names = json.load(infile)
@@ -102,12 +98,11 @@ async def get_history(api_config, download_images=True):
             prev_sender = "None"
             # iterate over the messages in the chat
             async for msg in client.iter_messages(
-                chat_nr, 30
+                chat_nr, 500
             ):  #  api_config["chat_nr"], 40):
                 # skip searching
                 if msg.date < last_update:
-                    print("ENDING HERE")
-                    print()
+                    print(chatType, "ENDING HERE")
                     break
 
                 if msg.text is not None and (

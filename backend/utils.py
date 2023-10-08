@@ -28,11 +28,15 @@ def merge_rows_postprocessing(data):
 
 
 def clean_up_images(listed_photo_ids, path_images):
-    used_photo_ids = [", ".join(listed_photo_ids).split(", ")]
+    used_photo_ids = ", ".join(listed_photo_ids).split(", ")
     unused_photos = [
         p for p in os.listdir(path_images)
         if p.split(".")[0] not in used_photo_ids
     ]
+    print(
+        "currently listed postings", len(used_photo_ids), "unused_ids",
+        len(unused_photos)
+    )
     for p in unused_photos:
         os.remove(os.path.join(path_images, p))
 
