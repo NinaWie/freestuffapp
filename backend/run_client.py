@@ -1,9 +1,12 @@
 import json
 import os
 import pandas as pd
-from telethon import TelegramClient, events, sync
+import asyncio
+from telethon import TelegramClient
 from data_preprocessing import create_geojson
 from utils import merge_rows_postprocessing, optimize_img_file_size
+
+IMG_OUT_PATH = "outputs"
 
 with open(os.path.join("geodata", "place_names.json"), "r") as infile:
     plz_names = json.load(infile)
@@ -54,7 +57,7 @@ def get_address(message):
     return real_street
 
 
-def get_history(api_config, download_images=True):
+async def get_history(api_config, download_images=True):
     """
     Load the last x messages and save as csv file
 
@@ -75,10 +78,10 @@ def get_history(api_config, download_images=True):
 
     id_current = 0
 
-    with TelegramClient(
+    async with TelegramClient(
         "anon", api_config["api_id"], api_config["api_hash"]
     ) as client:
-        for msg in client.iter_messages(api_config["chat_nr"], 40):
+        async for msg in client.iter_messages(api_config["chat_nr"], 40):
             # skip searching
             if "suche" in msg.text.lower(
             ) or "kein kaufen/verkaufen hier" in msg.text.lower():
@@ -96,8 +99,9 @@ def get_history(api_config, download_images=True):
             # Download potential images
             if download_images and msg.photo:
                 # thumb =0 was super small, thumb=3 seemed pretty much the original size
-                path = msg.download_media(
-                    file=os.path.join("img", f"{id_current}.jpg"), thumb=1
+                await msg.download_media(
+                    file=os.path.join(IMG_OUT_PATH, f"{id_current}.jpg"),
+                    thumb=1
                 )
                 photo_exists = True
             else:
@@ -154,4 +158,4 @@ def get_history(api_config, download_images=True):
 if __name__ == "__main__":
     with open("api_config.json", "r") as infile:
         api_config = json.load(infile)
-    get_history(api_config)
+    asyncio.run(get_history(api_config))
