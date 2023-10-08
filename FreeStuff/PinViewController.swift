@@ -78,7 +78,7 @@ class PinViewController: UITableViewController, UIImagePickerControllerDelegate,
         addressLabel.text = self.pinData.locationName
         
         // add time
-        timeLabel.text = self.pinData.status
+        timeLabel.text = self.pinData.time_posted
         
         
         // load image asynchronously

@@ -67,7 +67,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         searchController.searchResultsUpdater = self
         // Results should be displayed in same searchbar as used for searching
         searchController.obscuresBackgroundDuringPresentation = false
-        searchController.searchBar.placeholder = "Search penny machines"
+        searchController.searchBar.placeholder = "Search posting"
         searchController.hidesNavigationBarDuringPresentation = false
         searchController.searchBar.overrideUserInterfaceStyle = .light
         // iOS 11 compatability issue
@@ -134,8 +134,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         }
 
         for artwork in artworks {
-            print(artwork.title)
-            if (includedStates.contains(artwork.status) || artwork.status == "unvisited") { // TODO!!!
+            if (includedStates.contains(artwork.status)) {
                     PennyMap.addAnnotation(artwork)
             } else if (!includedStates.contains(artwork.status)) {
                 PennyMap.removeAnnotation(artwork)

@@ -4,11 +4,13 @@ import os
 import json
 from shapely import wkt
 
+OUT_PATH = "outputs"
+os.makedirs(OUT_PATH, exist_ok=True)
+# "../../images/freestuff/postings.json" real path
 
-def create_geojson(path="geodata", out_path="../data/all_locations.json"):
-    zurich_data = gpd.read_file(os.path.join(path, "zurich.gpkg"))
+
+def create_geojson(data, path="geodata"):
     strasse_zu_coord = pd.read_csv(os.path.join(path, "strassen.csv"))
-    data = pd.read_csv(os.path.join(path, "..", "test.csv"))
 
     # Part 1: process the one with street names
     data_with_street = data[~pd.isna(data["address"])]
@@ -40,8 +42,11 @@ def create_geojson(path="geodata", out_path="../data/all_locations.json"):
             data_with_street[pd.isna(data_with_street["x"])]
         ]
     ).dropna(subset=["zip"])
+    # convert to str
+    # leftover["zip"] = leftover["zip"].astype(int).astype(str)
 
     # set index
+    zurich_data = gpd.read_file(os.path.join(path, "zurich.gpkg"))
     zurich_data = zurich_data.set_index("name").sort_index()
     # remove invalid zip codes
     leftover = leftover[leftover["zip"].isin(zurich_data.index)]
@@ -71,25 +76,36 @@ def create_geojson(path="geodata", out_path="../data/all_locations.json"):
     data_with_geom.rename(
         {
             "Message": "name",
-            "Date": "last_updated"
+            "Date": "time_posted"
         }, axis=1, inplace=True
     )
     data_with_geom["external_url"] = "null"  # TODO: use telegram chat link?
-    data_with_geom["status"] = "unvisited"
+    data_with_geom["status"] = "showGoods"
 
+    # format the time
+    def to_readable_datetime(x):
+        return x.strftime("%d/%m/%Y, %H:%M")
+
+    data_with_geom["time_posted"] = data_with_geom["time_posted"].apply(
+        to_readable_datetime
+    )
+
+    # combine zip and address
     def get_full_address(row):
         address = ""
-        if row["address"] is not None:
-            address += (row["address"] + " ")
-        if row["zip"] is not None:
-            address += row["zip"]
+        if not pd.isna(row["address"]):
+            address += (str(row["address"]) + " ")
+        if not pd.isna(row["zip"]):
+            address += str(row["zip"])
         return address
 
     data_with_geom["address"] = data_with_geom.apply(get_full_address, axis=1)
-    data_with_geom = data_with_geom.drop(
-        ["Unnamed: 0", "Sender", "zip"], axis=1
+    data_with_geom = data_with_geom.drop(["zip"], axis=1)
+
+    # Save data
+    data_with_geom.to_file(
+        os.path.join(OUT_PATH, "data.geojson"), driver="GeoJSON"
     )
-    data_with_geom.to_file(out_path, driver="GeoJSON")
 
 
 def preprocess_streets(
@@ -164,3 +180,8 @@ def create_zurich_data(
     zurich_data.geometry.crs = "EPSG:2056"
     zurich_data.to_crs("EPSG:4326", inplace=True)
     zurich_data.to_file(out_path)
+
+
+if __name__ == "__main__":
+    data = pd.read_csv("data.csv")
+    create_geojson(data)
