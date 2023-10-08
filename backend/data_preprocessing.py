@@ -84,7 +84,7 @@ def create_geojson(data, path="geodata"):
 
     # format the time
     def to_readable_datetime(x):
-        return x.strftime("%d/%m/%Y, %H:%M")
+        return x.strftime("%d/%m/%Y %H:%M")
 
     data_with_geom["time_posted"] = data_with_geom["time_posted"].apply(
         to_readable_datetime
