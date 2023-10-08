@@ -4,9 +4,15 @@ import os
 import json
 from shapely import wkt
 
-OUT_PATH = "outputs"
+from utils import clean_up_images
+
+OUT_PATH = "../../images/freestuff"
+IMG_OUT_PATH = "../../images/freestuff/images"
 os.makedirs(OUT_PATH, exist_ok=True)
 # "../../images/freestuff/postings.json" real path
+TIME_FORMAT = "%d/%m/%Y %H:%M"
+
+current_geojson = gpd.read_file(os.path.join(OUT_PATH, "postings.json"))
 
 
 def create_geojson(data, path="geodata"):
@@ -80,11 +86,11 @@ def create_geojson(data, path="geodata"):
         }, axis=1, inplace=True
     )
     data_with_geom["external_url"] = "null"  # TODO: use telegram chat link?
-    data_with_geom["status"] = "showGoods"
+    data_with_geom["status"] = "available"
 
     # format the time
     def to_readable_datetime(x):
-        return x.strftime("%d/%m/%Y %H:%M")
+        return x.strftime(TIME_FORMAT)
 
     data_with_geom["time_posted"] = data_with_geom["time_posted"].apply(
         to_readable_datetime
@@ -102,10 +108,17 @@ def create_geojson(data, path="geodata"):
     data_with_geom["address"] = data_with_geom.apply(get_full_address, axis=1)
     data_with_geom = data_with_geom.drop(["zip"], axis=1)
 
+    # merge with existing data
+    data_with_geom = pd.concat([current_geojson, data_with_geom])
+    data_with_geom.drop_duplicates(inplace=True)  # TODO
+
     # Save data
     data_with_geom.to_file(
-        os.path.join(OUT_PATH, "data.geojson"), driver="GeoJSON"
+        os.path.join(OUT_PATH, "postings.json"), driver="GeoJSON"
     )
+
+    # Clean up images --> delete all that are not in the current json
+    clean_up_images(data_with_geom["photo_id"].values, IMG_OUT_PATH)
 
 
 def preprocess_streets(

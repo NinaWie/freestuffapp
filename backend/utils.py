@@ -1,4 +1,5 @@
 import pandas as pd
+import os
 from PIL import Image, ImageOps
 
 
@@ -24,6 +25,16 @@ def merge_rows_postprocessing(data):
         ["sender_next", "photo_next", "message_next"], axis=1, inplace=True
     )
     return data
+
+
+def clean_up_images(listed_photo_ids, path_images):
+    used_photo_ids = [", ".join(listed_photo_ids).split(", ")]
+    unused_photos = [
+        p for p in os.listdir(path_images)
+        if p.split(".")[0] not in used_photo_ids
+    ]
+    for p in unused_photos:
+        os.remove(os.path.join(path_images, p))
 
 
 def optimize_img_file_size(img_path):

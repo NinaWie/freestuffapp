@@ -3,6 +3,12 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# project specific
+*.ipynb
+*.drawio
+geodata/
+*.session
+
 # C extensions
 *.so
 
