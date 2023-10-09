@@ -134,9 +134,11 @@ class ViewController: UIViewController, UITextFieldDelegate {
         }
 
         for artwork in artworks {
-            if (includedStates.contains(artwork.status)) {
+            let categoryToSwitch = "show\(artwork.category)"
+            if (includedStates.contains(categoryToSwitch)) {
                     PennyMap.addAnnotation(artwork)
-            } else if (!includedStates.contains(artwork.status)) {
+            } else if (!includedStates.contains(categoryToSwitch)) {
+                print(includedStates, artwork.category)
                 PennyMap.removeAnnotation(artwork)
             }
         }

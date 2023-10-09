@@ -17,8 +17,9 @@ class Artwork: NSObject, MKAnnotation {
     let id: String
     let time_posted: String
     let text: String
+    let category: String
     
-    init(title: String, locationName: String, link: String, status: String, coordinate: CLLocationCoordinate2D, id: Int, time_posted: String) {
+    init(title: String, locationName: String, link: String, status: String, coordinate: CLLocationCoordinate2D, id: Int, time_posted: String, category: String) {
         self.title = title
         self.locationName = locationName
         self.coordinate = coordinate
@@ -27,6 +28,7 @@ class Artwork: NSObject, MKAnnotation {
         self.id = String(id)
         self.time_posted = time_posted
         self.text = self.title! + self.locationName
+        self.category = category
         
         super.init()
     }
@@ -52,6 +54,7 @@ class Artwork: NSObject, MKAnnotation {
         id = String((properties["id"] as? Int)!)
         coordinate = point.coordinate
         text = title! + locationName
+        category = (properties["category"] as? String)!
         
         super.init()
     }
@@ -76,15 +79,11 @@ class Artwork: NSObject, MKAnnotation {
     }
     
     var markerTintColor: UIColor  {
-      switch status {
-      case "unvisited": // rename to available
+      switch category {
+      case "Food":
         return .green
-      case "visited": // rename to reserved
-        return .red
-      case "marked":
-        return .yellow
-      case "retired":
-        return .gray
+      case "Goods":
+        return .blue
       default:
         return .black
       }
