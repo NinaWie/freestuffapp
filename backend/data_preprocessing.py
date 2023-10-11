@@ -14,13 +14,8 @@ TIME_FORMAT = "%d/%m/%Y %H:%M"
 
 if os.path.exists(os.path.join(OUT_PATH, "postings.json")):
     current_geojson = gpd.read_file(os.path.join(OUT_PATH, "postings.json"))
-    last_update = pd.to_datetime(
-        current_geojson["time_posted"], format=TIME_FORMAT, utc=True
-    ).max()
-    print("LAST UPDATE", last_update)
 else:
-    current_geojson = pd.DataFrame()
-    last_update = pd.to_datetime("2023-10-08 00:00:00+00:00")
+    current_geojson = pd.DataFrame(columns=["category"])
 
 
 def create_geojson(data, path="geodata"):

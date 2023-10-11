@@ -3,13 +3,24 @@ import os
 import pandas as pd
 import asyncio
 from telethon import TelegramClient
-from data_preprocessing import create_geojson, current_geojson, TIME_FORMAT, last_update
+from data_preprocessing import create_geojson, current_geojson, TIME_FORMAT, current_geojson
 from utils import merge_rows_postprocessing, optimize_img_file_size
 
 IMG_OUT_PATH = "../../images/freestuff/images"
 ids_in_use = [
     int(i.split(".")[0]) for i in os.listdir(IMG_OUT_PATH) if i[0] != "."
 ]
+
+last_update = {}
+for category in ["Food", "Goods"]:
+    # for all categories, find the last posted message
+    categ_postings = current_geojson[current_geojson["category"] == category]
+    if len(categ_postings) > 0:
+        last_update[category] = pd.to_datetime(
+            categ_postings["time_posted"], format=TIME_FORMAT, utc=True
+        ).max()
+    else:
+        last_update[category] = pd.to_datetime("2023-10-08 00:00:00+00:00")
 
 with open(os.path.join("geodata", "place_names.json"), "r") as infile:
     plz_names = json.load(infile)
@@ -22,7 +33,7 @@ def get_postal(message):
         return pd.NA
     for plz_name in postal_or_kreis:
         if plz_name in message.lower():
-            return postal_name_mapping.get(plz_name, plz_name)
+            return str(postal_name_mapping.get(plz_name, plz_name))
     return pd.NA
 
 
@@ -101,7 +112,8 @@ async def get_history(api_config, download_images=True):
                 chat_nr, 500
             ):  #  api_config["chat_nr"], 40):
                 # skip searching
-                if msg.date < last_update:
+
+                if msg.date < last_update[chatType]:
                     print(chatType, "ENDING HERE")
                     break
 
@@ -156,7 +168,6 @@ async def get_history(api_config, download_images=True):
                         "category": chatType
                     }
                 )
-                # print(message_list[-1])
 
                 id_current += 1
                 prev_sender = sender_name
