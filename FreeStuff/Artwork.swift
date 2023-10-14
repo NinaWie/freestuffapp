@@ -18,8 +18,9 @@ class Artwork: NSObject, MKAnnotation {
     let time_posted: String
     let text: String
     let category: String
+    let photoPaths : [String]
     
-    init(title: String, locationName: String, link: String, status: String, coordinate: CLLocationCoordinate2D, id: Int, time_posted: String, category: String) {
+    init(title: String, locationName: String, link: String, status: String, coordinate: CLLocationCoordinate2D, id: Int, time_posted: String, category: String, photoPaths: [String]) {
         self.title = title
         self.locationName = locationName
         self.coordinate = coordinate
@@ -29,6 +30,7 @@ class Artwork: NSObject, MKAnnotation {
         self.time_posted = time_posted
         self.text = self.title! + self.locationName
         self.category = category
+        self.photoPaths = photoPaths
         
         super.init()
     }
@@ -55,6 +57,7 @@ class Artwork: NSObject, MKAnnotation {
         coordinate = point.coordinate
         text = title! + locationName
         category = (properties["category"] as? String)!
+        photoPaths = ((properties["photo_id"] as! String).components(separatedBy: ", "))
         
         super.init()
     }
