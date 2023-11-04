@@ -22,6 +22,8 @@ class PinViewController: UITableViewController, UIImagePickerControllerDelegate,
     @IBOutlet weak var commentTextField: UITextField!
     @IBOutlet weak var timeLabel: UILabel!
     
+    @IBOutlet weak var scrollView: UIScrollView!
+    
     var pinData : Artwork!
     
     // Vars for the image/comment upload
@@ -39,6 +41,8 @@ class PinViewController: UITableViewController, UIImagePickerControllerDelegate,
             configureView()
         }
     }
+    var img_idx: Int = 0
+    var imageList: [UIImage] = []
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -81,13 +85,60 @@ class PinViewController: UITableViewController, UIImagePickerControllerDelegate,
         timeLabel.text = self.pinData.time_posted
         
         
-        // load image asynchronously
-        self.imageview.getImage(id: self.pinData.id)
-        // initialize tap gesture to enlarge image
-        let tapGestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(imageTapped(tapGestureRecognizer:)));
-        self.imageview.isUserInteractionEnabled = true
-        self.imageview.addGestureRecognizer(tapGestureRecognizer)
+        // load images asynchronously
+        for photoId in pinData.photoPaths {
+            getImage(id: photoId)
+        }
         
+        // scroll view
+        scrollView.delegate = self
+        scrollView.isPagingEnabled = true
+        
+        scrollView.contentSize = CGSize(width: view.frame.width * CGFloat(pinData.photoPaths.count), height: scrollView.frame.height)
+
+    }
+    
+    func loadURL(url: URL) {
+        DispatchQueue.global().async { [weak self] in
+            if let data = try? Data(contentsOf: url) {
+                if let image = UIImage(data: data) {
+                    DispatchQueue.main.async {
+                        self?.imageList.append(image)
+                        FOUNDIMAGE = true
+                        let imageView = UIImageView(image: image)
+                        //        // initialize tap gesture to enlarge image
+                        let tapGestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(self?.imageTapped(tapGestureRecognizer:)));
+                        imageView.isUserInteractionEnabled = true
+                        imageView.addGestureRecognizer(tapGestureRecognizer)
+                        imageView.contentMode = .scaleAspectFit
+                        
+                        self?.scrollView.addSubview(imageView)
+                        self?.layoutImageView(imageView, index: self?.img_idx ?? 0)
+                    }
+                }
+            }
+            else if (self?.img_idx == 0) {
+                // If link cannot be found, show default image
+                let image = UIImage(named: "default_image")
+                let imageView = UIImageView(image: image)
+                self?.scrollView.addSubview(imageView)
+                self?.imageList.append(image!)
+            }
+        }
+        
+    }
+    
+    func layoutImageView(_ imageView: UIImageView, index: Int) {
+            let xPosition = view.frame.width * CGFloat(index)
+            imageView.frame = CGRect(x: xPosition, y: 0, width: view.frame.width, height: scrollView.frame.height)
+            img_idx += 1
+        }
+    
+    func getImage(id: String){
+        let link_to_image = "\(imageURL)/\(id).jpg"
+        print("loading image", link_to_image)
+        guard let fullImageURL = URL(string: link_to_image) else { return }
+        self.loadURL(url: fullImageURL)
     }
     
     func loadComments(completionBlock: @escaping (String) -> Void) -> Void {
@@ -403,36 +454,11 @@ class PinViewController: UITableViewController, UIImagePickerControllerDelegate,
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         if (segue.identifier == "bigImage") {
             let destinationViewController = segue.destination as! ZoomViewController
-            destinationViewController.image = self.imageview.image
+            destinationViewController.images = imageList
+            let currentPosition = scrollView.contentOffset.x / scrollView.frame.width
+            destinationViewController.scrollPosition = currentPosition
         }
         
     }
     
 }
-
-extension UIImageView {
-    func loadURL(url: URL) {
-        FOUNDIMAGE = false
-        DispatchQueue.global().async { [weak self] in
-            if let data = try? Data(contentsOf: url) {
-                if let image = UIImage(data: data) {
-                    DispatchQueue.main.async {
-                        self?.image = image
-                    }
-                    FOUNDIMAGE = true
-                }
-            }
-        }
-        // If link cannot be found, show default image
-        if !FOUNDIMAGE {
-            self.image = UIImage(named: "default_image")
-        }
-    }
-    
-    func getImage(id: String){
-        let link_to_image = "\(imageURL)/\(id).jpg"
-        guard let fullImageURL = URL(string: link_to_image) else { return }
-        self.loadURL(url: fullImageURL)
-    }
-}
-
