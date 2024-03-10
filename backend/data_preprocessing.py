@@ -1,8 +1,8 @@
+import json
+import os
+
 import geopandas as gpd
 import pandas as pd
-import os
-import json
-from shapely import wkt
 
 from utils import clean_up_images
 
@@ -12,10 +12,28 @@ os.makedirs(OUT_PATH, exist_ok=True)
 # "../../images/freestuff/postings.json" real path
 TIME_FORMAT = "%d/%m/%Y %H:%M"
 
-if os.path.exists(os.path.join(OUT_PATH, "postings.json")):
-    current_geojson = gpd.read_file(os.path.join(OUT_PATH, "postings.json"))
-else:
-    current_geojson = pd.DataFrame(columns=["category"])
+
+def get_last_updated():
+    if os.path.exists(os.path.join(OUT_PATH, "postings.json")):
+        current_geojson = gpd.read_file(os.path.join(OUT_PATH, "postings.json"))
+    else:
+        current_geojson = pd.DataFrame(columns=["category"])
+
+    last_update = {}
+    for category in ["Food", "Goods"]:
+        # for all categories, find the last posted message
+        categ_postings = current_geojson[current_geojson["category"] == category]
+        if len(categ_postings) > 0:
+            last_update[category] = pd.to_datetime(
+                categ_postings["time_posted"], format=TIME_FORMAT, utc=True
+            ).max()
+        else:
+            last_update[category] = pd.to_datetime("2023-10-08 00:00:00+00:00")
+
+
+def get_used_ids():
+    ids_in_use = [int(i.split(".")[0]) for i in os.listdir(IMG_OUT_PATH) if i[0] != "."]
+    return ids_in_use
 
 
 def create_geojson(data, path="geodata"):
@@ -27,28 +45,21 @@ def create_geojson(data, path="geodata"):
         lambda x: x.split(" ")[0].lower()
     )
     data_with_street = data_with_street.merge(
-        strasse_zu_coord,
-        left_on="address_wo_number",
-        right_on="name",
-        how="left"
+        strasse_zu_coord, left_on="address_wo_number", right_on="name", how="left"
     )
     data_with_street = gpd.GeoDataFrame(
         data_with_street,
-        geometry=gpd.points_from_xy(
-            x=data_with_street["x"], y=data_with_street["y"]
-        )
+        geometry=gpd.points_from_xy(x=data_with_street["x"], y=data_with_street["y"]),
     )
 
     # Part 2: Process the ones with zip but no (valid) street
-    plz_exists_but_no_stret = (~pd.isna(data["zip"])) & pd.isna(
-        data["address"]
-    )
+    plz_exists_but_no_stret = (~pd.isna(data["zip"])) & pd.isna(data["address"])
     # leftover are the ones with plz but no sreets or the ones that we couldn't
     # assign a street to but which have a plz
     leftover = pd.concat(
         [
             data[plz_exists_but_no_stret],
-            data_with_street[pd.isna(data_with_street["x"])]
+            data_with_street[pd.isna(data_with_street["x"])],
         ]
     ).dropna(subset=["zip"])
     # convert to str
@@ -64,11 +75,8 @@ def create_geojson(data, path="geodata"):
     zurich_data["num"] = required_samples_per_zip
     zurich_data.dropna(inplace=True)
     # Sample points in polygons
-    sampled = zurich_data.geometry.sample_points(
-        zurich_data["num"].astype(int)
-    )
-    sampled = gpd.GeoDataFrame(sampled.explode()
-                               ).reset_index().drop("level_1", axis=1)
+    sampled = zurich_data.geometry.sample_points(zurich_data["num"].astype(int))
+    sampled = gpd.GeoDataFrame(sampled.explode()).reset_index().drop("level_1", axis=1)
     assert len(sampled) == len(leftover)
     # add as geometry
     leftover.sort_values("zip", inplace=True)
@@ -76,17 +84,14 @@ def create_geojson(data, path="geodata"):
 
     # final data: the ones with plz (leftover) and the ones where we could
     # find a street
-    data_with_geom = pd.concat(
-        [leftover, data_with_street.dropna(subset=["x"])]
-    ).drop(["x", "y", "name", "address_wo_number"], axis=1)
+    data_with_geom = pd.concat([leftover, data_with_street.dropna(subset=["x"])]).drop(
+        ["x", "y", "name", "address_wo_number"], axis=1
+    )
     data_with_geom = gpd.GeoDataFrame(data_with_geom, geometry="geometry")
 
     # rename fields to match the pennyme style:
     data_with_geom.rename(
-        {
-            "Message": "name",
-            "Date": "time_posted"
-        }, axis=1, inplace=True
+        {"Message": "name", "Date": "time_posted"}, axis=1, inplace=True
     )
     data_with_geom["external_url"] = "null"  # TODO: use telegram chat link?
     data_with_geom["status"] = "available"
@@ -103,7 +108,7 @@ def create_geojson(data, path="geodata"):
     def get_full_address(row):
         address = ""
         if not pd.isna(row["address"]):
-            address += (str(row["address"]) + " ")
+            address += str(row["address"]) + " "
         if not pd.isna(row["zip"]):
             address += str(row["zip"])
         return address
@@ -116,9 +121,7 @@ def create_geojson(data, path="geodata"):
     data_with_geom.drop_duplicates(inplace=True)  # TODO
 
     # Save data
-    data_with_geom.to_file(
-        os.path.join(OUT_PATH, "postings.json"), driver="GeoJSON"
-    )
+    data_with_geom.to_file(os.path.join(OUT_PATH, "postings.json"), driver="GeoJSON")
 
     # Clean up images --> delete all that are not in the current json
     clean_up_images(data_with_geom["photo_id"].values, IMG_OUT_PATH)
@@ -126,7 +129,7 @@ def create_geojson(data, path="geodata"):
 
 def preprocess_streets(
     in_path=os.path.join("geodata", "raw", "strassennamen.json"),
-    out_path=os.path.join("geodata", "strassen.csv")
+    out_path=os.path.join("geodata", "strassen.csv"),
 ):
     with open(in_path, "r") as infile:
         strassen = json.load(infile)
@@ -135,16 +138,16 @@ def preprocess_streets(
     #     strassen = json.load(infile)
     strasse_zu_coord = {}
     for strasse in strassen["features"]:
-        strasse_zu_coord[strasse["properties"]["lokalisationsname"].lower()
-                         ] = strasse["geometry"]["coordinates"]
-    strasse_zu_coord = pd.DataFrame(strasse_zu_coord,
-                                    index=["x", "y"]).swapaxes(1, 0)
+        strasse_zu_coord[strasse["properties"]["lokalisationsname"].lower()] = strasse[
+            "geometry"
+        ]["coordinates"]
+    strasse_zu_coord = pd.DataFrame(strasse_zu_coord, index=["x", "y"]).swapaxes(1, 0)
     strasse_zu_coord.to_csv(out_path)
 
 
 def generate_eligible_name_list(
     zurich_data_path=os.path.join("geodata", "zurich.gpkg"),
-    out_path=os.path.join("geodata", "place_names.json")
+    out_path=os.path.join("geodata", "place_names.json"),
 ):
     zurich_data = gpd.read_file(zurich_data_path)
     eligible_names = list(zurich_data["name"].values)
@@ -159,10 +162,7 @@ def generate_eligible_name_list(
 
     with open(out_path, "w") as outfile:
         json.dump(
-            {
-                "names": eligible_names,
-                "name_mapping": eligible_name_mapping
-            }, outfile
+            {"names": eligible_names, "name_mapping": eligible_name_mapping}, outfile
         )
 
 
@@ -170,17 +170,14 @@ def create_zurich_data(
     in_path="geodata/raw", out_path=os.path.join("geodata", "zurich.gpkg")
 ):
     # get plz polygons
-    plz = gpd.read_file(os.path.join(in_path,
-                                     "PLZO_PLZ.shp"))[["PLZ", "geometry"]]
+    plz = gpd.read_file(os.path.join(in_path, "PLZO_PLZ.shp"))[["PLZ", "geometry"]]
     # get names for plz
-    plz_orte = pd.read_csv(
-        os.path.join(in_path, "plz_ortsnamen.csv"), delimiter=";"
-    )
+    plz_orte = pd.read_csv(os.path.join(in_path, "plz_ortsnamen.csv"), delimiter=";")
     plz_orte = plz_orte[plz_orte["Ortschaftsname"] == "Zürich"]
     # merge to keep only the ones in zurich
-    plz_zurich = plz.merge(
-        plz_orte, how="right", left_on="PLZ", right_on="PLZ"
-    )[["PLZ", "geometry"]]
+    plz_zurich = plz.merge(plz_orte, how="right", left_on="PLZ", right_on="PLZ")[
+        ["PLZ", "geometry"]
+    ]
     plz_zurich.rename({"PLZ": "name"}, axis=1, inplace=True)
     plz_zurich["name"] = plz_zurich["name"].astype(str)
 
@@ -188,8 +185,7 @@ def create_zurich_data(
     kreise = pd.read_csv(os.path.join(in_path, "stadtkreise.csv"))
     kreise["geometry"] = kreise["geometry"].apply(wkt.loads)
     kreise = gpd.GeoDataFrame(kreise, geometry="geometry")
-    kreise = kreise[["bezeichnung",
-                     "geometry"]].rename({"bezeichnung": "name"}, axis=1)
+    kreise = kreise[["bezeichnung", "geometry"]].rename({"bezeichnung": "name"}, axis=1)
     kreise["name"] = kreise["name"].str.lower()
 
     zurich_data = pd.concat([kreise, plz_zurich])  # project
