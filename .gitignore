@@ -12,6 +12,7 @@ db_login.json
 secrets.json
 FreeStuff.xcodeproj/xcuserdata/
 backup*
+postings.json
 
 # C extensions
 *.so

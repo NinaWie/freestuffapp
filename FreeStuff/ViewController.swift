@@ -350,21 +350,22 @@ class ViewController: UIViewController, UITextFieldDelegate {
     @available(iOS 13.0, *)
     func loadInitialData() {
         // load from server
-        let link_to_json = "http://37.120.179.15:8000/freestuff/postings.json"
-        guard let json_url = URL(string: link_to_json) else { return }
-        do{
-            let serverJsonData = try Data(contentsOf: json_url, options:.mappedIfSafe)
+        let linkToJson = "http://127.0.0.1:5000/api/postings.json"  // update with your actual IP and port
+        guard let jsonUrl = URL(string: linkToJson) else { return }
+
+        do {
+            let serverJsonData = try Data(contentsOf: jsonUrl, options: .mappedIfSafe)
             let serverJsonAsMap = try MKGeoJSONDecoder()
                 .decode(serverJsonData)
                 .compactMap { $0 as? MKGeoJSONFeature }
-            // transform to Artwork objects
+
             let pinsFromServer = serverJsonAsMap.compactMap(Artwork.init)
             artworks.append(contentsOf: pinsFromServer)
-            for (ind, pin) in artworks.enumerated(){
-                            pinIdDict[pin.id] = ind
-                        }
-        }
-        catch{
+
+            for (ind, pin) in artworks.enumerated() {
+                pinIdDict[pin.id] = ind
+            }
+        } catch {
             print("Error in loading updates from server", error)
         }
     }
