@@ -63,7 +63,6 @@ class DeletedPosts(Base):
 
 def insert_posting(data):
     session = Session()
-    print("Received data:", data)
     try:
         # Extract and validate fields
         lng = data.get("lon_coord")
@@ -83,12 +82,16 @@ def insert_posting(data):
             status=data.get("status", "available"),
             geometry=geom,
         )
-
         session.add(new_posting)
+        session.flush()  # This sends the insert query to the DB but doesn't commit yet
+        # get ID created for the post
+        new_post_id = new_posting.id
+
         session.commit()
-        return {"status": "success", "id": new_posting.id}
+        return {"status": "success", "id": new_posting.id}, 200, new_post_id
     except Exception as e:
+        print("Error:", e)
         session.rollback()
-        return {"error": str(e)}, 500
+        return {"error": str(e)}, 500, None
     finally:
         session.close()

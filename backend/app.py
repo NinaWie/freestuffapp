@@ -5,6 +5,10 @@ from typing import Any, Dict
 import pandas as pd
 from flask import Flask, jsonify, request
 
+# slack
+from slack import WebClient
+from slack.errors import SlackApiError
+
 # database stuff
 from flask import jsonify
 from shapely.geometry import mapping
@@ -24,14 +28,37 @@ with open("ip_comment_dict.json", "r") as f:
 
 PATH_COMMENTS = os.path.join("..", "..", "images", "freestuff", "comments")
 PATH_IMAGES = os.path.join("..", "..", "images", "freestuff", "images")
+CLIENT = WebClient(token=os.environ["SLACK_TOKEN"])
 
 app = Flask(__name__)
+
+
+def post_to_slack(message: str) -> None:
+    """Post message to Slack channel."""
+    try:
+        CLIENT.chat_postMessage(channel="#freestuff", text=message, username="PennyMe")
+    except SlackApiError as e:
+        assert e.response["ok"] is False
+        assert e.response["error"]
+        raise e
 
 
 @app.route("/add_post", methods=["POST"])
 def create_posting():
     post_infos = request.args.to_dict()
-    return insert_posting(post_infos)
+    jsonify_result, error_code, new_post_id = insert_posting(post_infos)
+
+    # Error case: send error to frontend and slack
+    if error_code != 200:
+        post_to_slack(f"Error adding post: {jsonify_result['error']}")
+        return jsonify_result, error_code
+
+    # Success case: TODO add image to new_post_id
+
+    # send message to slack
+    post_to_slack(f"New post added: {post_infos}")
+
+    return jsonify_result, error_code
 
 
 @app.route("/postings.json", methods=["GET"])
@@ -92,6 +119,8 @@ def add_comment():
 
     save_comment(comment, ip_address, post_id)
 
+    post_to_slack(f"New comment for post {post_id}: {comment}")
+
     return jsonify({"message": "Success!"}), 200
 
 
@@ -146,9 +175,13 @@ def delete_post(post_id):
         session.add(deleted)
         session.delete(post)
         session.commit()
+
+        post_to_slack(f"Deleted post {post_id} ({mode})")
+
         return {"status": "success", "message": f"Post {post_id} deleted."}, 200
     except Exception as e:
         session.rollback()
+        post_to_slack(f"Error in deletion of {post_id}: {e}")
         return {"error": str(e)}, 500
     finally:
         session.close()
