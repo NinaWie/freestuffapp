@@ -350,7 +350,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     @available(iOS 13.0, *)
     func loadInitialData() {
         // load from server
-        let linkToJson = "http://127.0.0.1:5000/api/postings.json"  // update with your actual IP and port
+        let linkToJson = "http://127.0.0.1:5000/postings.json"  // update with your actual IP and port
         guard let jsonUrl = URL(string: linkToJson) else { return }
 
         do {

@@ -25,79 +25,30 @@ from shapely.geometry import mapping
 from geoalchemy2.shape import to_shape
 
 
-def init_session():
-    """Initialize a database session."""
-    DB_FILE = "db_login.json"
-    with open(DB_FILE, "r") as infile:
-        db_login = json.load(infile)
+from read_write_postings import insert_posting, Session, Postings
 
-    def get_con():
-        return psycopg2.connect(**db_login)
+with open("blocked_ips.json", "r") as infile:
+    # NOTE: blocking an IP requires restart of app.py via waitress
+    blocked_ips = json.load(infile)
 
-    engine = create_engine("postgresql+psycopg2://", creator=get_con)
-    return sessionmaker(bind=engine)
+# dictionary with comment by IP address - used to block predatory ips
+with open("ip_comment_dict.json", "r") as f:
+    IP_COMMENT_DICT = json.load(f)
 
 
-Session = init_session()
-Base = declarative_base()
+PATH_COMMENTS = os.path.join("..", "..", "images", "freestuff", "images", "comments")
+PATH_IMAGES = os.path.join("..", "..", "images", "freestuff", "images")
+
 app = Flask(__name__)
 
 
-class Postings(Base):
-    __tablename__ = "postings"
-
-    id = Column(Integer, primary_key=True)
-    Sender = Column(String)
-    name = Column(String)
-    time_posted = Column(DateTime)
-    photo_id = Column(String)
-    category = Column(String)
-    address = Column(String)
-    external_url = Column(String)
-    status = Column(String)
-    geometry = Column(Geometry(geometry_type="POINT", srid=4326))
-
-
-def insert_posting(data):
-    session = Session()
-    try:
-        # Extract and validate fields
-        lng = data.get("longitude")
-        lat = data.get("latitude")
-        if lng is None or lat is None:
-            return {"error": "Missing coordinates"}, 400
-
-        geom = from_shape(Point(lng, lat), srid=4326)
-
-        new_posting = Postings(
-            Sender=data.get("Sender"),
-            name=data.get("name"),
-            time_posted=datetime.fromisoformat(data.get("time_posted")),
-            photo_id=data.get("photo_id"),
-            category=data.get("category"),
-            address=data.get("address"),
-            external_url=data.get("external_url"),
-            status=data.get("status"),
-            geometry=geom,
-        )
-
-        session.add(new_posting)
-        session.commit()
-        return {"status": "success", "id": new_posting.id}
-    except Exception as e:
-        session.rollback()
-        return {"error": str(e)}, 500
-    finally:
-        session.close()
-
-
-@app.route("/api/insert_post", methods=["POST"])
+@app.route("/add_post", methods=["POST"])
 def create_posting():
-    data = request.get_json()
-    return insert_posting(data)
+    post_infos = request.args.to_dict()
+    return insert_posting(post_infos)
 
 
-@app.route("/api/postings.json", methods=["GET"])
+@app.route("/postings.json", methods=["GET"])
 def get_all_postings():
     session = Session()
     try:
@@ -127,20 +78,60 @@ def get_all_postings():
         session.close()
 
 
+@app.route("/add_comment", methods=["GET"])
+def add_comment():
+    """Receives a comment and adds it to the json file."""
+
+    comment = str(request.args.get("comment"))
+    post_id = str(request.args.get("id"))
+
+    ip_address = request.remote_addr
+    if ip_address in blocked_ips:
+        return jsonify({"error": "User IP address is blocked"}), 403
+
+    path_machine_comments = os.path.join(PATH_COMMENTS, f"{post_id}.json")
+    if os.path.exists(path_machine_comments):
+        with open(path_machine_comments, "r") as infile:
+            # take previous comments and add paragaph
+            all_comments = json.load(infile)
+    else:
+        all_comments = {}
+
+    all_comments[str(datetime.now())] = comment
+
+    with open(path_machine_comments, "w") as outfile:
+        json.dump(all_comments, outfile, indent=4)
+
+    # send message to slack
+    # message_slack(machine_id, comment, ip=ip_address)
+
+    save_comment(comment, ip_address, post_id)
+
+    return jsonify({"message": "Success!"}), 200
+
+
+def save_comment(comment: str, ip: str, machine_id: int):
+    """
+    Saves a comment to the json file.
+
+    Args:
+        comment: The comment to save.
+        ip: The IP address of the user.
+        machine_id: The ID of the machine.
+    """
+    # Create dict hierarchy if needed
+    if ip not in IP_COMMENT_DICT.keys():
+        IP_COMMENT_DICT[ip] = {}
+    if machine_id not in IP_COMMENT_DICT[ip].keys():
+        IP_COMMENT_DICT[ip][machine_id] = {}
+
+    # Add comment
+    IP_COMMENT_DICT[ip][machine_id][str(datetime.now())] = comment
+
+    # Resave the file
+    with open("ip_comment_dict.json", "w") as f:
+        json.dump(IP_COMMENT_DICT, f, indent=4)
+
+
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
-
-# if __name__ == "__main__":
-#     test_data = {
-#         "Sender": "Alice",
-#         "name": "Cool Place",
-#         "time_posted": "2025-04-24T15:30:00",
-#         "photo_id": "abc123",
-#         "category": "parks",
-#         "address": "123 Main St",
-#         "external_url": "http://example.com",
-#         "status": "active",
-#         "longitude": 13.405,
-#         "latitude": 52.52,
-#     }
-#     print(insert_posting(test_data))

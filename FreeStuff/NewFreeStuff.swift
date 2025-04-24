@@ -233,7 +233,6 @@ struct NewMachineFormView: View {
     // Properties to hold user input
     @State private var name: String = ""
     @State private var address: String = ""
-    @State private var area: String = ""
     @State private var showFinishedAlert = false
     @State private var isMapPresented = false
     @State private var selectedLocation: CLLocationCoordinate2D
@@ -353,7 +352,7 @@ struct NewMachineFormView: View {
     // Function to handle the submission of the request
     private func submitRequest() {
         isLoading = true
-        if name == "" || address == "" || area == "" || selectedImage == nil {
+        if name == "" || address == "" || selectedImage == nil {
             finishLoading(message: "Please enter all information & upload image")
         } else {
             // upload image and make request
@@ -365,11 +364,10 @@ struct NewMachineFormView: View {
                     return
                 }
                 var urlComponents = URLComponents(string: flaskURL)!
-                urlComponents.path = "/create_machine"
+                urlComponents.path = "/add_post"
                 urlComponents.queryItems = [
-                    URLQueryItem(name: "title", value: name),
+                    URLQueryItem(name: "name", value: name),
                     URLQueryItem(name: "address", value: address),
-                    URLQueryItem(name: "area", value: area),
                     URLQueryItem(name: "lon_coord", value: "\(coords.longitude)"),
                     URLQueryItem(name: "lat_coord", value: "\(coords.latitude)"),
                 ]

@@ -8,7 +8,7 @@ import MapKit
 
 var FOUNDIMAGE : Bool = false
 
-let flaskURL = "http://37.120.179.15:8888/"
+let flaskURL = "http://127.0.0.1:5000"
 let imageURL = "http://37.120.179.15:8000/freestuff/images"
 let commentURL = "http://37.120.179.15:8000/freestuff/comments"
 
@@ -201,20 +201,33 @@ class PinViewController: UITableViewController, UIImagePickerControllerDelegate,
     
     @objc func addComment(){
         // Create the alert controller
-           let alertController = UIAlertController(title: "Attention!", message: "Please be mindful. Your comment will be shown to all users of the app. Write as clear & concise as possible.", preferredStyle: .alert)
-           // Create the OK action
-           let okAction = UIAlertAction(title: "OK, add comment!", style: .default) { (_) in
-               
-               var comment = self.commentTextField.text
-               if comment?.count ?? 0 > 0 {
-                   self.commentTextField.text = ""
-                   self.commentTextField.attributedPlaceholder = NSAttributedString(
-                    string: "Your comment will be shown soon!")
-               }
+       let alertController = UIAlertController(title: "Attention!", message: "Please be mindful. Your comment will be shown to all users of the app. Write as clear & concise as possible.", preferredStyle: .alert)
+       // Create the OK action
+       let okAction = UIAlertAction(title: "OK, add comment!", style: .default) { (_) in
+           
+           var comment = self.commentTextField.text
+           if comment?.count ?? 0 > 0 {
+               self.commentTextField.text = ""
+               self.commentTextField.attributedPlaceholder = NSAttributedString(
+                string: "Your comment will be shown soon!")
+           }
 
             self.showLoadingView(withMessage: "Processing the comment...")
             self.uploadCommentWithTimeout(comment!)
-            }
+        }
+        
+        
+        // Create the cancel action
+        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel) { (_) in
+        }
+
+        // Add the actions to the alert controller
+        alertController.addAction(okAction)
+        alertController.addAction(cancelAction)
+
+        // Present the alert controller
+        self.present(alertController, animated: true, completion: nil)
+        
         }
 
     
@@ -246,7 +259,6 @@ class PinViewController: UITableViewController, UIImagePickerControllerDelegate,
      }
 
     func uploadCommentWithTimeout(_ comment: String) {
-
         let uploadTimeout: TimeInterval = 10
         var task: URLSessionDataTask?
 
