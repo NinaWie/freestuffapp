@@ -16,6 +16,8 @@ let maxDistanceFromItem: Double = 1000.0 // users within 100m can delete a post
 
 class PinViewController: UITableViewController, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
     
+    static var wasDeleted = false
+    
     @IBOutlet weak var titleLabel: UILabel!
     @IBOutlet weak var addressLabel: UILabel!
     @IBOutlet weak var updatedLabel: UILabel!
@@ -299,6 +301,9 @@ class PinViewController: UITableViewController, UIImagePickerControllerDelegate,
     }
     
     func deletePostCall(mode: String){
+        // set as deleted
+        PinViewController.wasDeleted = true
+        
         let urlString = flaskURL + "/delete_post/\(pinData.id)?mode=\(mode)"
         
         guard let url = URL(string: urlString) else { return }

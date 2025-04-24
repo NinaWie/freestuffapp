@@ -91,7 +91,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
         )
 
         loadInitialData()
-        addAnnotationsIteratively()
 
         let button = UIButton()
         button.frame = CGRect(x: 150, y: 150, width: 100, height: 50)
@@ -108,8 +107,14 @@ class ViewController: UIViewController, UITextFieldDelegate {
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        // each time the view appears, check colours of the pins
-        check_json_dict()
+        // check if a machine was deleted
+        if PinViewController.wasDeleted {
+            reloadData()
+            PinViewController.wasDeleted = false
+        }
+
+        // each time the view appears, check colours of the pins -> maybe add again to mark pins as favourite
+//        check_json_dict()
         // check whether some setting has changed, if yes, reload all data on the map
         if SettingsViewController.hasChanged {
             addAnnotationsIteratively()
@@ -119,9 +124,13 @@ class ViewController: UIViewController, UITextFieldDelegate {
             PennyMap.removeAnnotations(artworks)
             addAnnotationsIteratively()
             SettingsViewController.clusterHasChanged = false
-
         }
-        
+    }
+    
+    func reloadData() {
+        PennyMap.removeAnnotations(artworks)
+        artworks = []
+        loadInitialData()
     }
     
     func addAnnotationsIteratively() {
@@ -203,9 +212,15 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
     
     @objc func postNewStuff(){
-        print("execute method")
         if #available(iOS 14.0, *) {
-            let swiftUIViewController = UIHostingController(rootView: NewMachineFormView(coordinate: FreeStuff.locationManager.location!.coordinate))
+            let coordinate = FreeStuff.locationManager.location!.coordinate
+            let view = NewMachineFormView(
+                coordinate: coordinate,
+                onPostComplete: {
+                    self.reloadData()
+                }
+            )
+            let swiftUIViewController = UIHostingController(rootView: view)
             present(swiftUIViewController, animated: true)
         }
     }
@@ -349,26 +364,44 @@ class ViewController: UIViewController, UITextFieldDelegate {
     // To load machine locations from JSON
     @available(iOS 13.0, *)
     func loadInitialData() {
-        // load from server
-        let linkToJson = "http://127.0.0.1:5000/postings.json"  // update with your actual IP and port
+        let linkToJson = flaskURL + "/postings.json"
         guard let jsonUrl = URL(string: linkToJson) else { return }
 
-        do {
-            let serverJsonData = try Data(contentsOf: jsonUrl, options: .mappedIfSafe)
-            let serverJsonAsMap = try MKGeoJSONDecoder()
-                .decode(serverJsonData)
-                .compactMap { $0 as? MKGeoJSONFeature }
-
-            let pinsFromServer = serverJsonAsMap.compactMap(Artwork.init)
-            artworks.append(contentsOf: pinsFromServer)
-
-            for (ind, pin) in artworks.enumerated() {
-                pinIdDict[pin.id] = ind
+        let task = URLSession.shared.dataTask(with: jsonUrl) { data, response, error in
+            if let error = error {
+                print("Error in loading updates from server:", error)
+                return
             }
-        } catch {
-            print("Error in loading updates from server", error)
+
+            guard let data = data else {
+                print("No data received")
+                return
+            }
+
+            do {
+                let serverJsonAsMap = try MKGeoJSONDecoder()
+                    .decode(data)
+                    .compactMap { $0 as? MKGeoJSONFeature }
+
+                let pinsFromServer = serverJsonAsMap.compactMap(Artwork.init)
+
+                // Update on main thread
+                DispatchQueue.main.async {
+                    self.artworks.append(contentsOf: pinsFromServer)
+                    for (ind, pin) in self.artworks.enumerated() {
+                        self.pinIdDict[pin.id] = ind
+                        print(ind, pin)
+                    }
+                    self.addAnnotationsIteratively()
+                }
+
+            } catch {
+                print("Error decoding JSON:", error)
+            }
         }
+        task.resume()
     }
+
     
     // Search bar functionalities
     var isSearchBarEmpty: Bool {

@@ -96,7 +96,8 @@ struct MapView: View {
 //                    if initLoc.distance(from: centerLoc) > maxDistance {
 //                        showTooFarAlert.toggle()
 //                    }
-                    showDoneAlert.toggle()
+//                    showDoneAlert.toggle()
+                    self.presentationMode.wrappedValue.dismiss()
                 }
                 .padding(20)
                 .background(Color.blue)
@@ -117,18 +118,18 @@ struct MapView: View {
 //                        }
 //                    )
 //                }
-                .alert(isPresented: $showDoneAlert) {
-                    Alert(
-                        title: Text("Moved pin location successfully from (\(initalCenterCoords.latitude), \(initalCenterCoords.longitude)) to (\(centerCoordinate.latitude), \(centerCoordinate.longitude))."),
-                        primaryButton: .default(Text("Save")) {
-                            showDoneAlert = false
-                            self.presentationMode.wrappedValue.dismiss()
-                        },
-                        secondaryButton: .cancel(Text("Continue editing")) {
-                            showDoneAlert = false
-                        }
-                    )
-                }
+//                .alert(isPresented: $showDoneAlert) {
+//                    Alert(
+//                        title: Text("Moved pin location successfully from (\(initalCenterCoords.latitude), \(initalCenterCoords.longitude)) to (\(centerCoordinate.latitude), \(centerCoordinate.longitude))."),
+//                        primaryButton: .default(Text("Save")) {
+//                            showDoneAlert = false
+//                            self.presentationMode.wrappedValue.dismiss()
+//                        },
+//                        secondaryButton: .cancel(Text("Continue editing")) {
+//                            showDoneAlert = false
+//                        }
+//                    )
+//                }
             }
             VStack{
                 Spacer()
@@ -295,9 +296,12 @@ struct NewMachineFormView: View {
     @State private var isLoading = false
     @State private var keyboardHeight: CGFloat = 0
     private var keyboardObserver: AnyCancellable?
+    var onPostComplete: () -> Void
 
-    init(coordinate: CLLocationCoordinate2D) {
+    init(coordinate: CLLocationCoordinate2D, onPostComplete: @escaping () -> Void) {
         coords = coordinate
+        self.onPostComplete = onPostComplete
+        
         _selectedLocation = State(initialValue: coords)
         // Observe keyboard frame changes
         keyboardObserver = NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)
@@ -387,7 +391,7 @@ struct NewMachineFormView: View {
                 }.padding().disabled(isLoading)
             }
             
-            AlertPresenter(showAlert: $showFinishedAlert, title: "Finished", message: "Thanks for suggesting this machine. We will review this request shortly. Note that it may take a few days until the machine becomes visible.")
+            AlertPresenter(showAlert: $showFinishedAlert, title: "Finished", message: "Thanks for adding this post! If it is not visible on the map, consider closing and reopening.")
                 .padding()
         }
         .alert(isPresented: $showAlert) {
@@ -478,6 +482,7 @@ struct NewMachineFormView: View {
                     self.showFinishedAlert = true
                     self.presentationMode.wrappedValue.dismiss()
                     isLoading = false
+                    onPostComplete()
                 }
             }
             else {
