@@ -7,6 +7,7 @@ import UIKit
 import MapKit
 import CoreLocation
 import Contacts
+import SwiftUI
 
 let locationManager = CLLocationManager()
 let LAT_DEGREE_TO_KM = 110.948
@@ -20,6 +21,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     @IBOutlet weak var ownLocation: UIButton!
     @IBOutlet var toggleMapButton: UIButton!
     
+    @IBOutlet weak var newStuffButton: UIButton!
     @IBOutlet weak var navigationbar: UINavigationItem!
     
     //    For search results
@@ -98,6 +100,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         addMapTrackingButton()
         addSettingsButton()
         toggleMapTypeButton()
+        addNewButton()
     
         // Check whether version is new
         VersionManager.shared.showVersionInfoAlertIfNeeded()
@@ -164,12 +167,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         ownLocation.imageView?.contentMode = .scaleAspectFit
         ownLocation.addTarget(self, action: #selector(ViewController.centerMapOnUserButtonClicked), for: .touchUpInside)
         
-        // Add shadow
-        ownLocation.layer.shadowColor = UIColor(red: 0, green: 0, blue: 0, alpha: 0.25).cgColor
-        ownLocation.layer.shadowOffset = CGSize(width: 0.0, height: 2.0)
-        ownLocation.layer.shadowOpacity = 1.0
-        ownLocation.layer.shadowRadius = 0.0
-        ownLocation.layer.masksToBounds = false
+        addShadow(button: ownLocation)
         
         PennyMap.addSubview(ownLocation)
     }
@@ -183,15 +181,34 @@ class ViewController: UIViewController, UITextFieldDelegate {
         settingsbutton.imageView?.contentMode = .scaleAspectFit
 
         // Add shadow
-        settingsbutton.layer.shadowColor = UIColor(red: 0, green: 0, blue: 0, alpha: 0.25).cgColor
-        settingsbutton.layer.shadowOffset = CGSize(width: 0.0, height: 2.0)
-        settingsbutton.layer.shadowOpacity = 1.0
-        settingsbutton.layer.shadowRadius = 0.0
-        settingsbutton.layer.masksToBounds = false
+        addShadow(button: settingsbutton)
 
         PennyMap.addSubview(settingsbutton)
     }
     
+    func addNewButton(){
+        let image = UIImage(systemName: "plus", withConfiguration: UIImage.SymbolConfiguration(pointSize: 16, weight: .bold, scale: .large))?.withTintColor(.gray)
+        newStuffButton.setTitle("", for: .normal)
+        newStuffButton.backgroundColor = .white
+        newStuffButton.layer.cornerRadius = 0.5 * newStuffButton.bounds.size.width
+        newStuffButton.clipsToBounds = true
+        newStuffButton.setImage(image, for: .normal)
+        newStuffButton.imageView?.contentMode = .scaleAspectFit
+
+        newStuffButton.addTarget(self, action: #selector(postNewStuff), for: .touchUpInside)
+        
+        addShadow(button: newStuffButton)
+
+        PennyMap.addSubview(newStuffButton)
+    }
+    
+    @objc func postNewStuff(){
+        print("execute method")
+        if #available(iOS 14.0, *) {
+            let swiftUIViewController = UIHostingController(rootView: NewMachineFormView(coordinate: FreeStuff.locationManager.location!.coordinate))
+            present(swiftUIViewController, animated: true)
+        }
+    }
     
     
     func toggleMapTypeButton(){
@@ -201,16 +218,19 @@ class ViewController: UIViewController, UITextFieldDelegate {
         toggleMapButton.setImage(toggleMapImage, for: .normal)
         toggleMapButton.imageView?.contentMode = .scaleAspectFit
         toggleMapButton.addTarget(self, action: #selector(changeMapType), for: .touchUpInside)
-        
-        // Add shadow
-        toggleMapButton.layer.shadowColor = UIColor(red: 0, green: 0, blue: 0, alpha: 0.25).cgColor
-        toggleMapButton.layer.shadowOffset = CGSize(width: 0.0, height: 2.0)
-        toggleMapButton.layer.shadowOpacity = 1.0
-        toggleMapButton.layer.shadowRadius = 0.0
-        toggleMapButton.layer.masksToBounds = false
-        toggleMapButton.layer.cornerRadius = 4.0
+        addShadow(button: toggleMapButton)
         
         self.view.addSubview(toggleMapButton)
+    }
+    
+    func addShadow(button: UIButton) {
+        // Add shadow
+        button.layer.shadowColor = UIColor(red: 0, green: 0, blue: 0, alpha: 0.25).cgColor
+        button.layer.shadowOffset = CGSize(width: 0.0, height: 2.0)
+        button.layer.shadowOpacity = 1.0
+        button.layer.shadowRadius = 0.0
+        button.layer.masksToBounds = false
+//        button.layer.cornerRadius = 4.0
     }
 
     @objc func centerMapOnUserButtonClicked() {
