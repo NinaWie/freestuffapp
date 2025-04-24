@@ -12,6 +12,8 @@ let flaskURL = "http://127.0.0.1:5000"
 let imageURL = "http://37.120.179.15:8000/freestuff/images"
 let commentURL = "http://37.120.179.15:8000/freestuff/comments"
 
+let maxDistanceFromItem: Double = 100.0 // users within 100m can delete a post
+
 class PinViewController: UITableViewController, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
     
     @IBOutlet weak var titleLabel: UILabel!
@@ -235,15 +237,33 @@ class PinViewController: UITableViewController, UIImagePickerControllerDelegate,
         }
     
     @objc func deletePost(){
+        // check distance between user and item location
+        let coords = locationManager.location!.coordinate
+        let distance = GeoUtils.haversineDistance(
+            lat1: coords.latitude,
+            lon1: coords.longitude,
+            lat2: self.pinData.coordinate.latitude,
+            lon2: self.pinData.coordinate.longitude
+        )
+        // if distance to high, just show alert
+        if distance > maxDistanceFromItem {
+            let alert = UIAlertController(
+                title: "Too Far Away",
+                message: "You are too far away from this item to delete the post. Only users within \(Int(maxDistanceFromItem)) meters can delete it.",
+                preferredStyle: .alert
+            )
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            self.present(alert, animated: true, completion: nil)
+            return
+        }
+        
         // Create the alert controller
        let alertController = UIAlertController(title: "Delete post?", message: "Are you at the location and have picked up all items or can confirm that the post is no longer needed?", preferredStyle: .alert)
        // Create the OK action
        let okAction = UIAlertAction(title: "OK, delete post!", style: .default) { (_) in
-           
-           let coords = locationManager.location!.coordinate
 
            self.showLoadingView(withMessage: "Processing...")
-           self.deletePostCall(coords: coords)
+           self.deletePostCall()
         }
         
         // Create the cancel action
@@ -258,9 +278,7 @@ class PinViewController: UITableViewController, UIImagePickerControllerDelegate,
         self.present(alertController, animated: true, completion: nil)
     }
 
-    func deletePostCall(coords: CLLocationCoordinate2D){
-        print("coords", coords)
-        // TODO: check current location
+    func deletePostCall(){
         let urlString = flaskURL + "/delete_post/\(pinData.id)"
         
         guard let url = URL(string: urlString) else { return }

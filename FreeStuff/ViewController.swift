@@ -539,29 +539,6 @@ extension ViewController: CLLocationManagerDelegate {
         return (minLat, maxLat, minLong, maxLong)
     }
     
-    // Function to compute haversine distance between two points
-    func haversineDinstance(la1: Double, lo1: Double, la2: Double, lo2: Double, radius: Double = 6367444.7) -> Double {
-
-        let haversin = { (angle: Double) -> Double in
-            return (1 - cos(angle))/2
-        }
-
-        let ahaversin = { (angle: Double) -> Double in
-            return 2*asin(sqrt(angle))
-        }
-
-        // Converts from degrees to radians
-        let dToR = { (angle: Double) -> Double in
-            return (angle / 360) * 2 * Double.pi
-        }
-
-        let lat1 = dToR(la1)
-        let lon1 = dToR(lo1)
-        let lat2 = dToR(la2)
-        let lon2 = dToR(lo2)
-
-        return radius * ahaversin(haversin(lat2 - lat1) + cos(lat1) * cos(lat2) * haversin(lon2 - lon1))
-    }
     func searchLatIndex(artworks: [Artwork], minLat: Double, curIndex: Int, totalIndex: Int) -> Int{
         let curLength = artworks.count
         if curLength == 1{
@@ -608,7 +585,13 @@ extension ViewController: CLLocationManagerDelegate {
 
             // Check whether the pin is in the square
             if minLon < lon && lon < maxLon && artwork.status == "unvisited"{
-                let distInKm = haversineDinstance(la1: curLat, lo1: curLon, la2: lat, lo2: lon)/1000
+                let distance = GeoUtils.haversineDistance(
+                    lat1: curLat,
+                    lon1: curLon,
+                    lat2: lat,
+                    lon2: lon
+                )
+                let distInKm = distance/1000
                 // check whether in circle
                 if distInKm < radius{
                     pennyCounter += 1

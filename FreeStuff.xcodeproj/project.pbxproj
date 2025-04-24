@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		8319D8D027414AC100E97D93 /* ZoomViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8319D8CF27414AC100E97D93 /* ZoomViewController.swift */; };
+		83514C1B2DBA78620063189B /* Geoutils.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83514C1A2DBA785C0063189B /* Geoutils.swift */; };
 		839CF440267B78AB00E259D9 /* SettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 839CF43F267B78AB00E259D9 /* SettingsViewController.swift */; };
 		83BDBBBC2D87622300B66FBD /* NewFreeStuff.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83BDBBBB2D87621F00B66FBD /* NewFreeStuff.swift */; };
 		83BDBBBE2D876AF100B66FBD /* ImagePickerHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83BDBBBD2D876AED00B66FBD /* ImagePickerHelper.swift */; };
@@ -45,6 +46,7 @@
 
 /* Begin PBXFileReference section */
 		8319D8CF27414AC100E97D93 /* ZoomViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoomViewController.swift; sourceTree = "<group>"; };
+		83514C1A2DBA785C0063189B /* Geoutils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Geoutils.swift; sourceTree = "<group>"; };
 		839CF43F267B78AB00E259D9 /* SettingsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewController.swift; sourceTree = "<group>"; };
 		83BDBBBB2D87621F00B66FBD /* NewFreeStuff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewFreeStuff.swift; sourceTree = "<group>"; };
 		83BDBBBD2D876AED00B66FBD /* ImagePickerHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagePickerHelper.swift; sourceTree = "<group>"; };
@@ -119,6 +121,7 @@
 		9F9F31A32300B40900C0E854 /* FreeStuff */ = {
 			isa = PBXGroup;
 			children = (
+				83514C1A2DBA785C0063189B /* Geoutils.swift */,
 				839CF43F267B78AB00E259D9 /* SettingsViewController.swift */,
 				83D226CC2620F4910050ED9E /* PinViewController.swift */,
 				9FC12D6A230E9B1E00016617 /* AboutViewController.swift */,
@@ -311,6 +314,7 @@
 				9F9F31A52300B40900C0E854 /* AppDelegate.swift in Sources */,
 				9FF43BDA2621221A00BE3F6A /* SearchFooter.swift in Sources */,
 				839CF440267B78AB00E259D9 /* SettingsViewController.swift in Sources */,
+				83514C1B2DBA78620063189B /* Geoutils.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
