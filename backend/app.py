@@ -50,20 +50,21 @@ def create_posting():
         return jsonify({"error": "User IP address is blocked"}), 403
 
     post_infos = request.args.to_dict()
-    jsonify_result, error_code, new_post_id = insert_posting(post_infos)
+    jsonify_result, error_code, new_post_id = insert_posting(post_infos, nr_photos=len(request.files))
 
     # Error case: send error to frontend and slack
     if error_code != 200:
         post_to_slack(f"Error adding post: {jsonify_result['error']}")
         return jsonify_result, error_code
 
-    # Add image
-    if "image" not in request.files:
+    # Process images
+    if len(request.files) == 0:
         return jsonify({"error": "No image file found"}), 400
 
-    img_path = os.path.join(PATH_IMAGES, f"{new_post_id}.jpg")
-    request.files["image"].save(img_path)
-    process_uploaded_image(img_path)
+    for idx, img_file in enumerate(request.files):
+        img_path = os.path.join(PATH_IMAGES, f"{new_post_id}_{idx}.jpg")
+        request.files[img_file].save(img_path)
+        process_uploaded_image(img_path)
 
     # send message to slack
     post_to_slack(f"New post added: {post_infos}")
@@ -85,7 +86,7 @@ def get_all_postings():
                 "properties": {
                     "id": post.id,
                     "name": post.name,
-                    "time_posted": post.time_posted,
+                    "time_posted": post.time_posted.split(".")[0][:-3],
                     "photo_id": post.photo_id,
                     "category": post.category,
                     "address": post.address,

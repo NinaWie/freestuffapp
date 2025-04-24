@@ -2,6 +2,7 @@ import json
 from shapely.geometry import Point
 from datetime import datetime
 from PIL import Image, ImageOps
+import numpy as np
 
 # database stuff
 import psycopg2
@@ -32,7 +33,7 @@ Base = declarative_base()
 
 
 class Postings(Base):
-    __tablename__ = "postings"
+    __tablename__ = "posts"
 
     id = Column(Integer, primary_key=True)
     name = Column(String)
@@ -62,7 +63,7 @@ class DeletedPosts(Base):
     deletion_mode = Column(String)
 
 
-def insert_posting(data):
+def insert_posting(data, nr_photos: int = 1):
     session = Session()
     try:
         # Extract and validate fields
@@ -76,10 +77,10 @@ def insert_posting(data):
         new_posting = Postings(
             name=data.get("name"),
             time_posted=datetime.now(),
-            photo_id=data.get("photo_id", "TODO_Photo_ID"),
-            category=data.get("category", "TODO_Category"),
+            photo_id=",".join(["_" + str(i) for i in range(nr_photos)]),
+            category=data.get("category", "Goods"),
             address=data.get("address"),
-            external_url=data.get("external_url", "TODO_URL"),
+            external_url=data.get("external_url"),
             status=data.get("status", "available"),
             geometry=geom,
         )

@@ -14,9 +14,10 @@ import Combine
 import CoreLocation
 
 // how far the user can maximally be from the location
-let maxDistance: Double = 30
+let maxDistance: Double = 1000
 // variable defining how large the shown region is when changing coordinates
 let regionInMeters: Double = 2 * maxDistance
+let maxNrImages: Int = 5
 
 @available(iOS 13.0, *)
 struct MapViewRepresentable: UIViewRepresentable {
@@ -90,35 +91,32 @@ struct MapView: View {
             VStack{
                 Spacer()
                 Button("Finished") {
-                    let initLoc = CLLocation(latitude: initalCenterCoords.latitude, longitude: initalCenterCoords.longitude)
-                    let centerLoc = CLLocation(latitude: centerCoordinate.latitude, longitude: centerCoordinate.longitude)
-                    print("Distance", initLoc.distance(from: centerLoc) )
-                    if initLoc.distance(from: centerLoc) > maxDistance {
-                        showTooFarAlert.toggle()
-                    }
-                    else{
-                        showDoneAlert.toggle()
-                    }
+//                    let initLoc = CLLocation(latitude: initalCenterCoords.latitude, longitude: initalCenterCoords.longitude)
+//                    let centerLoc = CLLocation(latitude: centerCoordinate.latitude, longitude: centerCoordinate.longitude)
+//                    if initLoc.distance(from: centerLoc) > maxDistance {
+//                        showTooFarAlert.toggle()
+//                    }
+                    showDoneAlert.toggle()
                 }
                 .padding(20)
                 .background(Color.blue)
                 .foregroundColor(.white)
                 .cornerRadius(8)
                 .padding(.bottom, 20) // Padding at the bottom
-                .alert(isPresented: $showTooFarAlert) {
-                    Alert(
-                        title: Text("You must be within a \(Int(maxDistance))m radius from the location."),
-                        primaryButton: .default(Text("Cancel editing")){
-                            centerCoordinate = initalCenterCoords
-                            showTooFarAlert = false
-                            self.presentationMode.wrappedValue.dismiss()
-                        },
-                        secondaryButton: .cancel(Text("Continue")) {
-                            centerCoordinate = initalCenterCoords
-                            showTooFarAlert = false
-                        }
-                    )
-                }
+//                .alert(isPresented: $showTooFarAlert) {
+//                    Alert(
+//                        title: Text("You must be within a \(Int(maxDistance))m radius from the location."),
+//                        primaryButton: .default(Text("Cancel editing")){
+//                            centerCoordinate = initalCenterCoords
+//                            showTooFarAlert = false
+//                            self.presentationMode.wrappedValue.dismiss()
+//                        },
+//                        secondaryButton: .cancel(Text("Continue")) {
+//                            centerCoordinate = initalCenterCoords
+//                            showTooFarAlert = false
+//                        }
+//                    )
+//                }
                 .alert(isPresented: $showDoneAlert) {
                     Alert(
                         title: Text("Moved pin location successfully from (\(initalCenterCoords.latitude), \(initalCenterCoords.longitude)) to (\(centerCoordinate.latitude), \(centerCoordinate.longitude))."),
@@ -234,7 +232,7 @@ struct PHPickerViewControllerWrapper: UIViewControllerRepresentable {
     
     func makeUIViewController(context: Context) -> PHPickerViewController {
         var config = PHPickerConfiguration()
-        config.selectionLimit = 0 // 0 means no limit on selection
+        config.selectionLimit = maxNrImages // 0 means no limit on selection, here set to 5
         config.filter = .images // Ensure only images can be selected
         
         let picker = PHPickerViewController(configuration: config)
@@ -417,38 +415,46 @@ struct NewMachineFormView: View {
             finishLoading(message: "Please enter all information & upload image")
             return
         }
-            // upload image and make request
-        let image = selectedImages[0]
         
-                guard let imageData = image.jpegData(compressionQuality: 1.0) else {
-                    print("Failed to convert image to data")
-                    finishLoading(message: "Something went wrong with your image")
-                    return
-                }
-                //  Convert the image to a data object
                 var urlComponents = URLComponents(string: flaskURL)!
                 urlComponents.path = "/add_post"
                 urlComponents.queryItems = [
                     URLQueryItem(name: "name", value: name),
                     URLQueryItem(name: "address", value: address),
-                    URLQueryItem(name: "lon_coord", value: "\(coords.longitude)"),
-                    URLQueryItem(name: "lat_coord", value: "\(coords.latitude)"),
+                    URLQueryItem(name: "lon_coord", value: "\(selectedLocation.longitude)"),
+                    URLQueryItem(name: "lat_coord", value: "\(selectedLocation.latitude)"),
                 ]
                 urlComponents.percentEncodedQuery = urlComponents.percentEncodedQuery?.replacingOccurrences(of: "+", with: "%2B")
                 var request = URLRequest(url: urlComponents.url!)
                 request.httpMethod = "POST"
                 
-                // TODO: modify to deal with multiple images
+        // upload image and make request
+        let images = selectedImages
+        // Generate a boundary for multipart form data
+        let boundary = UUID().uuidString
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+
+        let body = NSMutableData()
+
+        // Loop through the selected images and append each to the body
+        for (index, image) in images.enumerated() {
+            guard let imageData = image.jpegData(compressionQuality: 1.0) else {
+                print("Failed to convert image to data")
+                finishLoading(message: "Something went wrong with your image")
+                return
+            }
+
+            // Append the image to the request body
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"image\(index)\"; filename=\"image\(index).jpg\"\r\n".data(using: .utf8)!)
+            body.append("Content-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
+            body.append(imageData)
+            body.append("\r\n".data(using: .utf8)!)
+        }
         
-                // Add the image data to the request body
-                let boundary = UUID().uuidString
-                request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-                let body = NSMutableData()
-                body.append("--\(boundary)\r\n".data(using: .utf8)!)
-                body.append("Content-Disposition: form-data; name=\"image\"; filename=\"image.jpg\"\r\n".data(using: .utf8)!)
-                body.append("Content-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
-                body.append(imageData)
-                body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
+        // Close the multipart body by adding the boundary
+        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+        
                 request.httpBody = body as Data
                 
                 // Create a URLSessionDataTask to send the request

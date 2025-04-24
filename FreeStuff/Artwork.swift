@@ -11,7 +11,7 @@ import Contacts
 class Artwork: NSObject, MKAnnotation {
     let title: String?
     let locationName: String
-    let link: String
+    let link: String?
     var status: String
     let coordinate: CLLocationCoordinate2D
     let id: String
@@ -50,18 +50,17 @@ class Artwork: NSObject, MKAnnotation {
         // Extract class variables
         title = properties["name"] as? String
         locationName = (properties["address"] as? String)!
-        link = (properties["external_url"] as? String)!
+        link = (properties["external_url"] as? String)
         status = (properties["status"] as? String)!
         time_posted = (properties["time_posted"] as? String)!
         id = String((properties["id"] as? Int)!)
         coordinate = point.coordinate
         text = title! + locationName
         category = (properties["category"] as? String)!
-        photoPaths = ((properties["photo_id"] as! String).components(separatedBy: ", "))
+        photoPaths = ((properties["photo_id"] as! String).components(separatedBy: ","))
         
         super.init()
     }
-    
     
     var subtitle: String? {
         return locationName
@@ -77,9 +76,9 @@ class Artwork: NSObject, MKAnnotation {
         return mapItem
     }
     
-    func getLink() -> String {
-        return self.link
-    }
+//    func getLink() -> String {
+//        return self.link
+//    }
     
     var markerTintColor: UIColor  {
       switch category {
