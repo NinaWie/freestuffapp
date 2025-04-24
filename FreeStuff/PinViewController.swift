@@ -22,6 +22,7 @@ class PinViewController: UITableViewController, UIImagePickerControllerDelegate,
     @IBOutlet weak var commentTextField: UITextField!
     @IBOutlet weak var timeLabel: UILabel!
     
+    @IBOutlet weak var deletePostButton: UIButton!
     @IBOutlet weak var scrollView: UIScrollView!
     
     var pinData : Artwork!
@@ -72,6 +73,9 @@ class PinViewController: UITableViewController, UIImagePickerControllerDelegate,
         // submit button
         submitButton.addTarget(self, action: #selector(addComment), for: .touchUpInside
         )
+        
+        // remove post button
+        deletePostButton.addTarget(self, action: #selector(deletePost), for: .touchUpInside)
         
         // Add title, address and updated
         titleLabel.numberOfLines = 0
@@ -229,7 +233,62 @@ class PinViewController: UITableViewController, UIImagePickerControllerDelegate,
         self.present(alertController, animated: true, completion: nil)
         
         }
+    
+    @objc func deletePost(){
+        // Create the alert controller
+       let alertController = UIAlertController(title: "Delete post?", message: "Are you at the location and have picked up all items or can confirm that the post is no longer needed?", preferredStyle: .alert)
+       // Create the OK action
+       let okAction = UIAlertAction(title: "OK, delete post!", style: .default) { (_) in
+           
+           let coords = locationManager.location!.coordinate
 
+           self.showLoadingView(withMessage: "Processing...")
+           self.deletePostCall(coords: coords)
+        }
+        
+        // Create the cancel action
+        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel) { (_) in
+        }
+
+        // Add the actions to the alert controller
+        alertController.addAction(okAction)
+        alertController.addAction(cancelAction)
+
+        // Present the alert controller
+        self.present(alertController, animated: true, completion: nil)
+    }
+
+    func deletePostCall(coords: CLLocationCoordinate2D){
+        print("coords", coords)
+        // TODO: check current location
+        let urlString = flaskURL + "/delete_post/\(pinData.id)"
+        
+        guard let url = URL(string: urlString) else { return }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "DELETE"
+
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            // Hide the loading view first
+            DispatchQueue.main.async {
+                self.hideLoadingView()
+            }
+
+            if let error = error {
+                print("Error: \(error)")
+                DispatchQueue.main.async {
+                    self.handleResponse(type: "delete", success: false, error: error)
+                }
+                return
+            }
+
+            // If the request is successful, display the success message
+            DispatchQueue.main.async {
+                self.handleResponse(type: "delete", success: true, error: nil)
+            }
+        }
+        task.resume()
+    }
     
     func showLoadingView(withMessage message: String) {
          // Create the loading view
@@ -434,7 +493,12 @@ class PinViewController: UITableViewController, UIImagePickerControllerDelegate,
         activityIndicator?.stopAnimating()
         loadingView?.removeFromSuperview()
         if success {
-            showAlert(title: "Success", message: "Upload successful! Please reopen the machine view to see your \(type).")
+            if type == "comment" {
+                showAlert(title: "Success", message: "Upload successful! Please reopen the post to see your comment.")
+            }
+            else {
+                showAlert(title: "Success", message: "Post deleted successfully")
+            }
         } else {
             var errorMessage = "An error occurred"
             if let urlError = error as? URLError {

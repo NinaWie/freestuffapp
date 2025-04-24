@@ -36,7 +36,7 @@ with open("ip_comment_dict.json", "r") as f:
     IP_COMMENT_DICT = json.load(f)
 
 
-PATH_COMMENTS = os.path.join("..", "..", "images", "freestuff", "images", "comments")
+PATH_COMMENTS = os.path.join("..", "..", "images", "freestuff", "comments")
 PATH_IMAGES = os.path.join("..", "..", "images", "freestuff", "images")
 
 app = Flask(__name__)
@@ -131,6 +131,24 @@ def save_comment(comment: str, ip: str, machine_id: int):
     # Resave the file
     with open("ip_comment_dict.json", "w") as f:
         json.dump(IP_COMMENT_DICT, f, indent=4)
+
+
+@app.route("/delete_post/<int:post_id>", methods=["DELETE"])
+def delete_post(post_id):
+    session = Session()
+    try:
+        post = session.query(Postings).filter_by(id=post_id).first()
+        if not post:
+            return {"error": "Post not found"}, 404
+
+        session.delete(post)
+        session.commit()
+        return {"status": "success", "message": f"Post {post_id} deleted."}, 200
+    except Exception as e:
+        session.rollback()
+        return {"error": str(e)}, 500
+    finally:
+        session.close()
 
 
 if __name__ == "__main__":
