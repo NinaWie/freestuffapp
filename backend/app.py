@@ -1,31 +1,17 @@
 import json
 import os
-import queue
-import random
-import traceback
 from datetime import datetime
-from threading import Thread
 from typing import Any, Dict
 import pandas as pd
 from flask import Flask, jsonify, request
-from shapely.geometry import Point
 
 # database stuff
-import psycopg2
-from sqlalchemy import Column, Integer, String, create_engine, func
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy import Column, Integer, String, DateTime, Text
-from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.ext.declarative import declarative_base
-from geoalchemy2 import Geometry
-from geoalchemy2.shape import from_shape
 from flask import jsonify
 from shapely.geometry import mapping
 from geoalchemy2.shape import to_shape
 
 
-from read_write_postings import insert_posting, Session, Postings
+from read_write_postings import insert_posting, Session, Postings, DeletedPosts
 
 with open("blocked_ips.json", "r") as infile:
     # NOTE: blocking an IP requires restart of app.py via waitress
@@ -61,7 +47,6 @@ def get_all_postings():
                 "geometry": mapping(geom),
                 "properties": {
                     "id": post.id,
-                    "Sender": post.Sender,
                     "name": post.name,
                     "time_posted": post.time_posted,
                     "photo_id": post.photo_id,
@@ -135,12 +120,30 @@ def save_comment(comment: str, ip: str, machine_id: int):
 
 @app.route("/delete_post/<int:post_id>", methods=["DELETE"])
 def delete_post(post_id):
+    mode = request.args.get("mode", "pickup")
+
     session = Session()
     try:
         post = session.query(Postings).filter_by(id=post_id).first()
         if not post:
             return {"error": "Post not found"}, 404
+        # Create a DeletedPosts object using data from the original post
+        deleted = DeletedPosts(
+            id=post.id,
+            name=post.name,
+            time_posted=post.time_posted,
+            photo_id=post.photo_id,
+            category=post.category,
+            address=post.address,
+            external_url=post.external_url,
+            status=post.status,
+            geometry=post.geometry,
+            deleted_at=datetime.now(),
+            deletion_mode=mode,
+        )
 
+        # Add to deleted_posts and remove from postings
+        session.add(deleted)
         session.delete(post)
         session.commit()
         return {"status": "success", "message": f"Post {post_id} deleted."}, 200

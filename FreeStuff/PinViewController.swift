@@ -12,7 +12,7 @@ let flaskURL = "http://127.0.0.1:5000"
 let imageURL = "http://37.120.179.15:8000/freestuff/images"
 let commentURL = "http://37.120.179.15:8000/freestuff/comments"
 
-let maxDistanceFromItem: Double = 100.0 // users within 100m can delete a post
+let maxDistanceFromItem: Double = 1000.0 // users within 100m can delete a post
 
 class PinViewController: UITableViewController, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
     
@@ -24,6 +24,7 @@ class PinViewController: UITableViewController, UIImagePickerControllerDelegate,
     @IBOutlet weak var commentTextField: UITextField!
     @IBOutlet weak var timeLabel: UILabel!
     
+    @IBOutlet weak var scamPostButton: UIButton!
     @IBOutlet weak var deletePostButton: UIButton!
     @IBOutlet weak var scrollView: UIScrollView!
     
@@ -76,8 +77,9 @@ class PinViewController: UITableViewController, UIImagePickerControllerDelegate,
         submitButton.addTarget(self, action: #selector(addComment), for: .touchUpInside
         )
         
-        // remove post button
+        // remove post and scam button
         deletePostButton.addTarget(self, action: #selector(deletePost), for: .touchUpInside)
+        scamPostButton.addTarget(self, action: #selector(scamPost), for: .touchUpInside)
         
         // Add title, address and updated
         titleLabel.numberOfLines = 0
@@ -263,7 +265,7 @@ class PinViewController: UITableViewController, UIImagePickerControllerDelegate,
        let okAction = UIAlertAction(title: "OK, delete post!", style: .default) { (_) in
 
            self.showLoadingView(withMessage: "Processing...")
-           self.deletePostCall()
+           self.deletePostCall(mode: "pickup")
         }
         
         // Create the cancel action
@@ -278,8 +280,31 @@ class PinViewController: UITableViewController, UIImagePickerControllerDelegate,
         self.present(alertController, animated: true, completion: nil)
     }
 
-    func deletePostCall(){
-        let urlString = flaskURL + "/delete_post/\(pinData.id)"
+    @objc func scamPost(){
+        // Create the alert controller
+       let alertController = UIAlertController(title: "Report scam", message: "Are you sure this post is fake / scam? Please only report if you are certain this post is predatory, not if you have picked up the item or other reasons.", preferredStyle: .alert)
+       // Create the OK action
+       let okAction = UIAlertAction(title: "OK, report!", style: .default) { (_) in
+
+           self.showLoadingView(withMessage: "Processing...")
+           self.deletePostCall(mode: "scam")
+        }
+        
+        // Create the cancel action
+        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel) { (_) in
+        }
+
+        // Add the actions to the alert controller
+        alertController.addAction(okAction)
+        alertController.addAction(cancelAction)
+
+        // Present the alert controller
+        self.present(alertController, animated: true, completion: nil)
+
+    }
+    
+    func deletePostCall(mode: String){
+        let urlString = flaskURL + "/delete_post/\(pinData.id)?mode=\(mode)"
         
         guard let url = URL(string: urlString) else { return }
 

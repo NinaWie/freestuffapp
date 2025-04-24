@@ -4,17 +4,13 @@ from datetime import datetime
 
 # database stuff
 import psycopg2
-from sqlalchemy import Column, Integer, String, create_engine, func
+from sqlalchemy import Column, Integer, String, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import Column, Integer, String, DateTime, Text
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import Column, Integer, String, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from geoalchemy2 import Geometry
 from geoalchemy2.shape import from_shape
-from flask import jsonify
-from shapely.geometry import mapping
-from geoalchemy2.shape import to_shape
 
 
 def init_session():
@@ -38,7 +34,6 @@ class Postings(Base):
     __tablename__ = "postings"
 
     id = Column(Integer, primary_key=True)
-    Sender = Column(String)
     name = Column(String)
     time_posted = Column(DateTime)
     photo_id = Column(String)
@@ -47,6 +42,23 @@ class Postings(Base):
     external_url = Column(String)
     status = Column(String)
     geometry = Column(Geometry(geometry_type="POINT", srid=4326))
+
+
+class DeletedPosts(Base):
+    __tablename__ = "deleted_posts"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String)
+    time_posted = Column(DateTime)
+    photo_id = Column(String)
+    category = Column(String)
+    address = Column(String)
+    external_url = Column(String)
+    status = Column(String)
+    geometry = Column(Geometry("POINT"))
+
+    deleted_at = Column(DateTime)
+    deletion_mode = Column(String)
 
 
 def insert_posting(data):
@@ -62,7 +74,6 @@ def insert_posting(data):
         geom = from_shape(Point(lng, lat), srid=4326)
 
         new_posting = Postings(
-            Sender=data.get("Sender", "Anonymous"),
             name=data.get("name"),
             time_posted=datetime.now(),
             photo_id=data.get("photo_id", "TODO_Photo_ID"),
