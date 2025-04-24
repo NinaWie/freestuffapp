@@ -9,6 +9,7 @@
 import Foundation
 import MapKit
 import SwiftUI
+import PhotosUI
 import Combine
 import CoreLocation
 
@@ -228,6 +229,58 @@ struct ConfirmationMessageView: View {
 }
 
 @available(iOS 14.0, *)
+struct PHPickerViewControllerWrapper: UIViewControllerRepresentable {
+    @Binding var selectedImages: [UIImage]
+    
+    func makeUIViewController(context: Context) -> PHPickerViewController {
+        var config = PHPickerConfiguration()
+        config.selectionLimit = 0 // 0 means no limit on selection
+        config.filter = .images // Ensure only images can be selected
+        
+        let picker = PHPickerViewController(configuration: config)
+        picker.delegate = context.coordinator
+        
+        return picker
+    }
+    
+    func updateUIViewController(_ uiViewController: PHPickerViewController, context: Context) {}
+    
+    func makeCoordinator() -> Coordinator {
+        return Coordinator(parent: self)
+    }
+    
+    class Coordinator: NSObject, PHPickerViewControllerDelegate {
+        var parent: PHPickerViewControllerWrapper
+        
+        init(parent: PHPickerViewControllerWrapper) {
+            self.parent = parent
+        }
+        
+        func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
+            picker.dismiss(animated: true)
+            
+            var images: [UIImage] = []
+            
+            for result in results {
+                result.itemProvider.loadObject(ofClass: UIImage.self) { (object, error) in
+                    if let image = object as? UIImage {
+                        images.append(image)
+                    }
+                    
+                    // Only update selected images when all images are loaded
+                    if images.count == results.count {
+                        DispatchQueue.main.async {
+                            self.parent.selectedImages = images
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+@available(iOS 14.0, *)
 struct NewMachineFormView: View {
     let coords: CLLocationCoordinate2D
     // Properties to hold user input
@@ -238,7 +291,7 @@ struct NewMachineFormView: View {
     @State private var selectedLocation: CLLocationCoordinate2D
     @State private var displayResponse: String = ""
     @Environment(\.presentationMode) private var presentationMode // Access the presentationMode environment variable
-    @State private var selectedImage: UIImage? = nil
+    @State private var selectedImages: [UIImage] = []
     @State private var isImagePickerPresented: Bool = false
     @State private var showAlert = false
     @State private var isLoading = false
@@ -263,22 +316,30 @@ struct NewMachineFormView: View {
             Button(action: {
                 isImagePickerPresented = true
             }) {
-                Text("Select Image")
+                Text("Select Images")
                     .padding()
                     .foregroundColor(Color.white)
                     .frame(maxWidth: .infinity)
                     .background(Color.blue)
                     .cornerRadius(10)
-                
-                // Display the selected image
-                if let selectedImage = selectedImage {
-                    Image(uiImage: selectedImage)
-                        .resizable()
-                        .scaledToFit()
-                }
             }
             .padding()
             
+            // Display the selected images
+            if !selectedImages.isEmpty {
+                ScrollView(.horizontal) {
+                    HStack {
+                        ForEach(selectedImages, id: \.self) { image in
+                            Image(uiImage: image)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 100, height: 100)
+                                .padding(5)
+                        }
+                    }
+                }
+                .padding()
+            }
             // Display coordinates and make button to select them on map
             let rounded_lat = String(format: "%.4f", coords.latitude)
             let rounded_lon = String(format: "%.4f", coords.longitude)
@@ -337,7 +398,7 @@ struct NewMachineFormView: View {
         .padding()
         .navigationBarTitle("Add new machine")
         .sheet(isPresented: $isImagePickerPresented) {
-            ImagePicker(selectedImage: $selectedImage, sourceType: .photoLibrary)
+            PHPickerViewControllerWrapper(selectedImages: $selectedImages)
         }
         }
         .padding(.bottom, keyboardHeight)
@@ -352,17 +413,19 @@ struct NewMachineFormView: View {
     // Function to handle the submission of the request
     private func submitRequest() {
         isLoading = true
-        if name == "" || address == "" || selectedImage == nil {
+        if name == "" || address == "" || selectedImages.count==0 {
             finishLoading(message: "Please enter all information & upload image")
-        } else {
+            return
+        }
             // upload image and make request
-            if let image = selectedImage! as UIImage ?? nil {
-                //  Convert the image to a data object
+        let image = selectedImages[0]
+        
                 guard let imageData = image.jpegData(compressionQuality: 1.0) else {
                     print("Failed to convert image to data")
                     finishLoading(message: "Something went wrong with your image")
                     return
                 }
+                //  Convert the image to a data object
                 var urlComponents = URLComponents(string: flaskURL)!
                 urlComponents.path = "/add_post"
                 urlComponents.queryItems = [
@@ -375,6 +438,8 @@ struct NewMachineFormView: View {
                 var request = URLRequest(url: urlComponents.url!)
                 request.httpMethod = "POST"
                 
+                // TODO: modify to deal with multiple images
+        
                 // Add the image data to the request body
                 let boundary = UUID().uuidString
                 request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
@@ -429,6 +494,4 @@ struct NewMachineFormView: View {
                 }
                 task.resume()
             }
-        }
-    }
 }

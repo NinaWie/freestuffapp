@@ -1,6 +1,7 @@
 import json
 from shapely.geometry import Point
 from datetime import datetime
+from PIL import Image, ImageOps
 
 # database stuff
 import psycopg2
@@ -95,3 +96,22 @@ def insert_posting(data):
         return {"error": str(e)}, 500, None
     finally:
         session.close()
+
+
+def process_uploaded_image(img_path: str, basewidth: int = 1000):
+    """
+    Optimizes an image for size/quality and re-saves it to the server.
+
+    Args:
+        img_path: The path to save the image to.
+        basewidth: width of rescaled image, defaults to 1000. Used to be 400.
+    """
+    img = Image.open(img_path)
+    img = ImageOps.exif_transpose(img)
+    wpercent = basewidth / float(img.size[0])
+    if wpercent > 1:
+        return "Image uploaded successfully, no resize necessary"
+    # resize
+    hsize = int((float(img.size[1]) * float(wpercent)))
+    img = img.resize((basewidth, hsize), Image.Resampling.LANCZOS)
+    img.save(img_path, quality=95)

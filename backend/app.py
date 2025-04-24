@@ -15,7 +15,7 @@ from shapely.geometry import mapping
 from geoalchemy2.shape import to_shape
 
 
-from read_write_postings import insert_posting, Session, Postings, DeletedPosts
+from read_write_postings import insert_posting, Session, Postings, DeletedPosts, process_uploaded_image
 
 with open("blocked_ips.json", "r") as infile:
     # NOTE: blocking an IP requires restart of app.py via waitress
@@ -45,6 +45,10 @@ def post_to_slack(message: str) -> None:
 
 @app.route("/add_post", methods=["POST"])
 def create_posting():
+    ip_address = request.remote_addr
+    if ip_address in blocked_ips:
+        return jsonify({"error": "User IP address is blocked"}), 403
+
     post_infos = request.args.to_dict()
     jsonify_result, error_code, new_post_id = insert_posting(post_infos)
 
@@ -53,7 +57,13 @@ def create_posting():
         post_to_slack(f"Error adding post: {jsonify_result['error']}")
         return jsonify_result, error_code
 
-    # Success case: TODO add image to new_post_id
+    # Add image
+    if "image" not in request.files:
+        return jsonify({"error": "No image file found"}), 400
+
+    img_path = os.path.join(PATH_IMAGES, f"{new_post_id}.jpg")
+    request.files["image"].save(img_path)
+    process_uploaded_image(img_path)
 
     # send message to slack
     post_to_slack(f"New post added: {post_infos}")
