@@ -125,13 +125,6 @@ class PinViewController: UITableViewController, UIImagePickerControllerDelegate,
                     }
                 }
             }
-            else if (self?.img_idx == 0) {
-                // If link cannot be found, show default image
-                let image = UIImage(named: "default_image")
-                let imageView = UIImageView(image: image)
-                self?.scrollView.addSubview(imageView)
-                self?.imageList.append(image!)
-            }
         }
         
     }

@@ -365,7 +365,7 @@ struct NewMachineFormView: View {
                 .textFieldStyle(RoundedBorderTextFieldStyle())
             
             // Email input field
-            TextField("Address", text: $address)
+            TextField("Address (optional)", text: $address)
                 .padding()
                 .textFieldStyle(RoundedBorderTextFieldStyle())
             
@@ -411,22 +411,22 @@ struct NewMachineFormView: View {
     // Function to handle the submission of the request
     private func submitRequest() {
         isLoading = true
-        if name == "" || address == "" || selectedImages.count==0 {
+        if name == "" || selectedImages.count==0 {
             finishLoading(message: "Please enter all information & upload image")
             return
         }
         
-                var urlComponents = URLComponents(string: flaskURL)!
-                urlComponents.path = "/add_post"
-                urlComponents.queryItems = [
-                    URLQueryItem(name: "name", value: name),
-                    URLQueryItem(name: "address", value: address),
-                    URLQueryItem(name: "lon_coord", value: "\(selectedLocation.longitude)"),
-                    URLQueryItem(name: "lat_coord", value: "\(selectedLocation.latitude)"),
-                ]
-                urlComponents.percentEncodedQuery = urlComponents.percentEncodedQuery?.replacingOccurrences(of: "+", with: "%2B")
-                var request = URLRequest(url: urlComponents.url!)
-                request.httpMethod = "POST"
+        var urlComponents = URLComponents(string: flaskURL)!
+        urlComponents.path = "/add_post"
+        urlComponents.queryItems = [
+            URLQueryItem(name: "name", value: name),
+            URLQueryItem(name: "address", value: address),
+            URLQueryItem(name: "lon_coord", value: "\(selectedLocation.longitude)"),
+            URLQueryItem(name: "lat_coord", value: "\(selectedLocation.latitude)"),
+        ]
+        urlComponents.percentEncodedQuery = urlComponents.percentEncodedQuery?.replacingOccurrences(of: "+", with: "%2B")
+        var request = URLRequest(url: urlComponents.url!)
+        request.httpMethod = "POST"
                 
         // upload image and make request
         let images = selectedImages
@@ -455,49 +455,49 @@ struct NewMachineFormView: View {
         // Close the multipart body by adding the boundary
         body.append("--\(boundary)--\r\n".data(using: .utf8)!)
         
-                request.httpBody = body as Data
-                
-                // Create a URLSessionDataTask to send the request
-                let task = URLSession.shared.dataTask(with: request) { (data, response, error) in
-                    if let error = error {
-                        finishLoading(message: "Something went wrong. Please check your internet connection and try again")
-                        return
-                    }
-                    // Check if a valid HTTP response was received
-                    guard let httpResponse = response as? HTTPURLResponse else {
-                        finishLoading(message: "Something went wrong. Please check your internet connection and try again")
-                        return
-                    }
-                    // Extract the status code from the HTTP response
-                    let statusCode = httpResponse.statusCode
-                    
-                    // Check if the status code indicates success (e.g., 200 OK)
-                    if 200 ..< 300 ~= statusCode {
-                        // everything worked, finish
-                        DispatchQueue.main.async {
-                            self.showFinishedAlert = true
-                            self.presentationMode.wrappedValue.dismiss()
-                            isLoading = false
-                        }
-                    }
-                    else {
-                        if let responseData = data {
-                            do {
-                                // Parse the JSON response
-                                if let json = try JSONSerialization.jsonObject(with: responseData, options: []) as? [String: Any] {
-                                    // Handle the JSON data here
-                                    if let answerString = json["error"] as? String {
-                                        finishLoading(message: answerString)
-                                        return
-                                    }
-                                }
-                            } catch {
-                                print("JSON parsing error: \(error)")
-                                finishLoading(message: "Something went wrong. Please check your internet connection and try again")
+        request.httpBody = body as Data
+        
+        // Create a URLSessionDataTask to send the request
+        let task = URLSession.shared.dataTask(with: request) { (data, response, error) in
+            if let error = error {
+                finishLoading(message: "Something went wrong. Please check your internet connection and try again")
+                return
+            }
+            // Check if a valid HTTP response was received
+            guard let httpResponse = response as? HTTPURLResponse else {
+                finishLoading(message: "Something went wrong. Please check your internet connection and try again")
+                return
+            }
+            // Extract the status code from the HTTP response
+            let statusCode = httpResponse.statusCode
+            
+            // Check if the status code indicates success (e.g., 200 OK)
+            if 200 ..< 300 ~= statusCode {
+                // everything worked, finish
+                DispatchQueue.main.async {
+                    self.showFinishedAlert = true
+                    self.presentationMode.wrappedValue.dismiss()
+                    isLoading = false
+                }
+            }
+            else {
+                if let responseData = data {
+                    do {
+                        // Parse the JSON response
+                        if let json = try JSONSerialization.jsonObject(with: responseData, options: []) as? [String: Any] {
+                            // Handle the JSON data here
+                            if let answerString = json["error"] as? String {
+                                finishLoading(message: answerString)
+                                return
                             }
                         }
+                    } catch {
+                        print("JSON parsing error: \(error)")
+                        finishLoading(message: "Something went wrong. Please check your internet connection and try again")
                     }
                 }
-                task.resume()
             }
+        }
+        task.resume()
+    }
 }
