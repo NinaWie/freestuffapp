@@ -8,6 +8,10 @@ __pycache__/
 *.drawio
 geodata/
 *.session
+db_login.json
+secrets.json
+FreeStuff.xcodeproj/xcuserdata/
+backup*
 
 # C extensions
 *.so
