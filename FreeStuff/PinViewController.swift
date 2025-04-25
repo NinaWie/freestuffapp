@@ -88,8 +88,8 @@ class PinViewController: UITableViewController, UIImagePickerControllerDelegate,
         titleLabel.contentMode = .scaleToFill
         titleLabel.textAlignment = NSTextAlignment.center
         titleLabel.text = self.pinData.title!
-        addressLabel.numberOfLines = 3
-        addressLabel.text = self.pinData.locationName
+        addressLabel.numberOfLines = 0
+        addressLabel.text = self.pinData.postDescription
         
         // add time
         timeLabel.text = self.pinData.time_posted

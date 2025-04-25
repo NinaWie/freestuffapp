@@ -390,7 +390,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
                     self.artworks.append(contentsOf: pinsFromServer)
                     for (ind, pin) in self.artworks.enumerated() {
                         self.pinIdDict[pin.id] = ind
-                        print(ind, pin)
                     }
                     self.addAnnotationsIteratively()
                 }
@@ -689,7 +688,7 @@ extension ViewController: UITableViewDelegate, UITableViewDataSource {
           artwork = artworks[indexPath.row]
         }
         cell.textLabel?.text = artwork.title
-        cell.detailTextLabel?.text = artwork.locationName
+        cell.detailTextLabel?.text = artwork.shortDescription
         return cell
     }
     

@@ -40,7 +40,7 @@ class Postings(Base):
     time_posted = Column(DateTime)
     photo_id = Column(String)
     category = Column(String)
-    address = Column(String)
+    description = Column(String)
     external_url = Column(String)
     status = Column(String)
     geometry = Column(Geometry(geometry_type="POINT", srid=4326))
@@ -54,7 +54,7 @@ class DeletedPosts(Base):
     time_posted = Column(DateTime)
     photo_id = Column(String)
     category = Column(String)
-    address = Column(String)
+    description = Column(String)
     external_url = Column(String)
     status = Column(String)
     geometry = Column(Geometry("POINT"))
@@ -79,9 +79,9 @@ def insert_posting(data, nr_photos: int = 1):
             time_posted=datetime.now(),
             photo_id=",".join(["_" + str(i) for i in range(nr_photos)]),
             category=data.get("category", "Goods"),
-            address=data.get("address"),
+            description=data.get("description", ""),
             external_url=data.get("external_url"),
-            status=data.get("status", "available"),
+            status=data.get("status", "temporary"),
             geometry=geom,
         )
         session.add(new_posting)

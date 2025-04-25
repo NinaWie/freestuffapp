@@ -284,7 +284,7 @@ struct NewMachineFormView: View {
     let coords: CLLocationCoordinate2D
     // Properties to hold user input
     @State private var name: String = ""
-    @State private var address: String = ""
+    @State private var description: String = ""
     @State private var showFinishedAlert = false
     @State private var isMapPresented = false
     @State private var selectedLocation: CLLocationCoordinate2D
@@ -314,6 +314,11 @@ struct NewMachineFormView: View {
     var body: some View {
         ScrollView{
         VStack {
+            // Name input field
+            TextField("Title", text: $name)
+                .padding()
+                .textFieldStyle(RoundedBorderTextFieldStyle())
+            
             // Button to open the ImagePicker when tapped
             Button(action: {
                 isImagePickerPresented = true
@@ -363,16 +368,19 @@ struct NewMachineFormView: View {
                 }.padding(3)
             }.padding(3)
             
-            // Name input field
-            TextField("Description", text: $name)
-                .padding()
-                .textFieldStyle(RoundedBorderTextFieldStyle())
+            // Description field
+            Text("Description (optional)")
+                .foregroundColor(.gray)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 12)
             
-            // Email input field
-            TextField("Address (optional)", text: $address)
-                .padding()
-                .textFieldStyle(RoundedBorderTextFieldStyle())
-            
+            TextEditor(text: $description)
+                .padding(4)
+                .frame(height: 120)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color.gray.opacity(0.5), lineWidth: 1)
+            )
             
             // Submit button
             if isLoading {
@@ -424,7 +432,7 @@ struct NewMachineFormView: View {
         urlComponents.path = "/add_post"
         urlComponents.queryItems = [
             URLQueryItem(name: "name", value: name),
-            URLQueryItem(name: "address", value: address),
+            URLQueryItem(name: "description", value: description),
             URLQueryItem(name: "lon_coord", value: "\(selectedLocation.longitude)"),
             URLQueryItem(name: "lat_coord", value: "\(selectedLocation.latitude)"),
         ]
