@@ -20,150 +20,6 @@ let regionInMeters: Double = 2 * maxDistance
 let maxNrImages: Int = 5
 
 @available(iOS 13.0, *)
-struct MapViewRepresentable: UIViewRepresentable {
-    @Binding var mapType: MKMapType
-    @Binding var centerCoordinate: CLLocationCoordinate2D
-
-    func makeUIView(context: Context) -> MKMapView {
-        let mapView = MKMapView()
-        mapView.delegate = context.coordinator
-        return mapView
-    }
-
-    func updateUIView(_ view: MKMapView, context: Context) {
-        view.mapType = mapType
-        let region = MKCoordinateRegion(center: centerCoordinate, latitudinalMeters: regionInMeters, longitudinalMeters: regionInMeters)
-        view.setRegion(region, animated: true)
-    }
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(self)
-    }
-
-    class Coordinator: NSObject, MKMapViewDelegate {
-        var parent: MapViewRepresentable
-
-        init(_ parent: MapViewRepresentable) {
-            self.parent = parent
-        }
-
-        func mapView(_ mapView: MKMapView, regionDidChangeAnimated animated: Bool) {
-            parent.centerCoordinate = mapView.centerCoordinate
-        }
-    }
-}
-
-
-@available(iOS 14.0, *)
-struct MapView: View {
-    @State private var region: MKCoordinateRegion
-    @State private var showDoneAlert = false
-    @State private var showTooFarAlert = false
-    @Binding private var centerCoordinate: CLLocationCoordinate2D
-    @Environment(\.presentationMode) private var presentationMode
-    let initalCenterCoords: CLLocationCoordinate2D
-    @State private var mapType: MKMapType = .standard
-
-    
-    init(centerCoordinate: Binding<CLLocationCoordinate2D>, initialCenter: CLLocationCoordinate2D) {
-            _centerCoordinate = centerCoordinate
-            let regionTemp = MKCoordinateRegion(
-                center: initialCenter,
-                latitudinalMeters: regionInMeters,
-                longitudinalMeters: regionInMeters
-            )
-            _region = State(initialValue: regionTemp)
-            initalCenterCoords = initialCenter
-    }
-    
-    var body: some View {
-        ZStack {
-            // Custom MapViewRepresentable for map type switching
-            MapViewRepresentable(mapType: $mapType, centerCoordinate: $centerCoordinate)
-                .edgesIgnoringSafeArea(.all)
-            
-            // Overlay the marker at the center coordinate
-            Image(systemName: "mappin.circle.fill")
-                .foregroundColor(.red)
-                .font(.title)
-                .offset(y: -20) // Offset to position the marker correctly
-            
-            VStack{
-                Spacer()
-                Button("Finished") {
-//                    let initLoc = CLLocation(latitude: initalCenterCoords.latitude, longitude: initalCenterCoords.longitude)
-//                    let centerLoc = CLLocation(latitude: centerCoordinate.latitude, longitude: centerCoordinate.longitude)
-//                    if initLoc.distance(from: centerLoc) > maxDistance {
-//                        showTooFarAlert.toggle()
-//                    }
-//                    showDoneAlert.toggle()
-                    self.presentationMode.wrappedValue.dismiss()
-                }
-                .padding(20)
-                .background(Color.blue)
-                .foregroundColor(.white)
-                .cornerRadius(8)
-                .padding(.bottom, 20) // Padding at the bottom
-//                .alert(isPresented: $showTooFarAlert) {
-//                    Alert(
-//                        title: Text("You must be within a \(Int(maxDistance))m radius from the location."),
-//                        primaryButton: .default(Text("Cancel editing")){
-//                            centerCoordinate = initalCenterCoords
-//                            showTooFarAlert = false
-//                            self.presentationMode.wrappedValue.dismiss()
-//                        },
-//                        secondaryButton: .cancel(Text("Continue")) {
-//                            centerCoordinate = initalCenterCoords
-//                            showTooFarAlert = false
-//                        }
-//                    )
-//                }
-//                .alert(isPresented: $showDoneAlert) {
-//                    Alert(
-//                        title: Text("Moved pin location successfully from (\(initalCenterCoords.latitude), \(initalCenterCoords.longitude)) to (\(centerCoordinate.latitude), \(centerCoordinate.longitude))."),
-//                        primaryButton: .default(Text("Save")) {
-//                            showDoneAlert = false
-//                            self.presentationMode.wrappedValue.dismiss()
-//                        },
-//                        secondaryButton: .cancel(Text("Continue editing")) {
-//                            showDoneAlert = false
-//                        }
-//                    )
-//                }
-            }
-            VStack{
-                Spacer()
-                HStack{
-                    Button(
-                        action: {
-                            switch mapType {
-                            case .standard:
-                                mapType = .satellite
-                            case .satellite:
-                                mapType = .hybrid
-                            default:
-                                mapType = .standard
-                            }
-                        }){
-                            Image("map_symbol_without_border")
-                                .renderingMode(.original)
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                                .frame(width: 40, height: 40)
-                                .padding()
-                                .shadow(color: Color.black.opacity(0.25), radius: 2, x: 0, y: 2)
-                                .foregroundColor(.white)
-                        }
-                        .padding(.leading, 2)
-                    Spacer()
-                }
-            }
-        }.ignoresSafeArea(.all) // Ignore safe area for the entire ZStack
-    }
-}
-
-
-@available(iOS 13.0, *)
 struct AlertPresenter: UIViewControllerRepresentable {
     @Binding var showAlert: Bool
     let title: String
@@ -278,6 +134,43 @@ struct PHPickerViewControllerWrapper: UIViewControllerRepresentable {
     }
 }
 
+extension CLLocationCoordinate2D: Equatable {
+    public static func == (lhs: CLLocationCoordinate2D, rhs: CLLocationCoordinate2D) -> Bool {
+        return lhs.latitude == rhs.latitude && lhs.longitude == rhs.longitude
+    }
+}
+struct IdentifiableCoordinate: Identifiable {
+    let id = UUID()
+    let coordinate: CLLocationCoordinate2D
+}
+
+
+@available(iOS 14.0, *)
+struct InteractiveMapView: View {
+    @Binding var selectedLocation: CLLocationCoordinate2D
+
+    @State private var region: MKCoordinateRegion
+
+    init(selectedLocation: Binding<CLLocationCoordinate2D>) {
+        _selectedLocation = selectedLocation
+        _region = State(initialValue: MKCoordinateRegion(
+            center: selectedLocation.wrappedValue,
+            span: MKCoordinateSpan(latitudeDelta: 0.005, longitudeDelta: 0.005)
+        ))
+    }
+
+    var body: some View {
+        Map(coordinateRegion: $region, annotationItems: [IdentifiableCoordinate(coordinate: selectedLocation)]) { item in
+            MapMarker(coordinate: item.coordinate, tint: .red)
+        }
+        .onChange(of: region.center) { newCenter in
+            selectedLocation = newCenter
+        }
+        .frame(height: 200)
+        .cornerRadius(10)
+    }
+}
+
 
 @available(iOS 14.0, *)
 struct NewMachineFormView: View {
@@ -312,106 +205,78 @@ struct NewMachineFormView: View {
     }
 
     var body: some View {
-        ScrollView{
-        VStack {
-            // Name input field
-            TextField("Title", text: $name)
-                .padding()
-                .textFieldStyle(RoundedBorderTextFieldStyle())
-            
-            // Button to open the ImagePicker when tapped
-            Button(action: {
-                isImagePickerPresented = true
-            }) {
-                Text("Select Images")
-                    .padding()
-                    .foregroundColor(Color.white)
-                    .frame(maxWidth: .infinity)
-                    .background(Color.blue)
-                    .cornerRadius(10)
+        Form {
+            Section(header: Text("Post Info")) {
+                TextField("Title", text: $name)
+
+                TextEditor(text: $description)
+                    .frame(height: 100)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                    )
+                    .padding(.vertical, 4)
             }
-            .padding()
-            
-            // Display the selected images
-            if !selectedImages.isEmpty {
-                ScrollView(.horizontal) {
-                    HStack {
-                        ForEach(selectedImages, id: \.self) { image in
-                            Image(uiImage: image)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 100, height: 100)
-                                .padding(5)
-                        }
+
+            Section(header: Text("Location")) {
+                InteractiveMapView(selectedLocation: $selectedLocation)
+
+                Text("Lat: \(String(format: "%.4f", selectedLocation.latitude)), Lon: \(String(format: "%.4f", selectedLocation.longitude))")
+                    .font(.footnote)
+                    .foregroundColor(.gray)
+            }
+
+            Section(header: Text("Images")) {
+                if !selectedImages.isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack {
+                            ForEach(selectedImages, id: \.self) { image in
+                                Image(uiImage: image)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: 80, height: 80)
+                                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                            }
+                        }.padding(.vertical, 4)
                     }
                 }
-                .padding()
-            }
-            // Display coordinates and make button to select them on map
-            let rounded_lat = String(format: "%.4f", coords.latitude)
-            let rounded_lon = String(format: "%.4f", coords.longitude)
-            //(selectedLocation.longitude * 1000).rounded() / 1000)
-            VStack(alignment: .leading, spacing: 5) {
-                Text("Lat/lon: \(rounded_lat), \(rounded_lon)").padding(3)
-                Button(action: {
-                    isMapPresented = true
-                }) {
-                    Text("Change location on map")
-                        .padding()
-                        .foregroundColor(Color.black)
-                        .frame(maxWidth: .infinity)
-                        .background(Color.yellow)
-                        .cornerRadius(10)
+
+                Button("Select Images") {
+                    isImagePickerPresented = true
                 }
-                .sheet(isPresented: $isMapPresented) {
-                    MapView(centerCoordinate: $selectedLocation, initialCenter: coords)
-                }.padding(3)
-            }.padding(3)
-            
-            // Description field
-            Text("Description (optional)")
-                .foregroundColor(.gray)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 12)
-            
-            TextEditor(text: $description)
-                .padding(4)
-                .frame(height: 120)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(Color.gray.opacity(0.5), lineWidth: 1)
-            )
-            
-            // Submit button
-            if isLoading {
-                ProgressView("Loading...")
+                .foregroundColor(.blue)
+            }
+
+            Section {
+                if isLoading {
+                    HStack {
+                        Spacer()
+                        ProgressView("Uploading...")
+                        Spacer()
+                    }
+                } else {
+                    Button(action: {
+                        submitRequest()
+                    }) {
+                        Text("Finish")
+                            .bold()
+                            .frame(maxWidth: .infinity)
+                    }
+                    .foregroundColor(.white)
                     .padding()
-            } else {
-                Button(action: {
-                    submitRequest()
-                }) {
-                    Text("Finish")
-                        .padding()
-                        .foregroundColor(Color.white)
-                        .frame(maxWidth: .infinity)
-                        .background(Color.blue)
-                        .cornerRadius(10)
-                }.padding().disabled(isLoading)
-            }
-            
-            AlertPresenter(showAlert: $showFinishedAlert, title: "Finished", message: "Thanks for adding this post! If it is not visible on the map, consider closing and reopening.")
-                .padding()
-        }
-        .alert(isPresented: $showAlert) {
-                    Alert(title: Text("Error!"), message: Text(displayResponse), dismissButton: .default(Text("Dismiss")))
+                    .background(Color.blue)
+                    .cornerRadius(10)
                 }
-        .padding()
-        .navigationBarTitle("Add new machine")
+            }
+        }
+        .navigationTitle("Add New Post")
         .sheet(isPresented: $isImagePickerPresented) {
             PHPickerViewControllerWrapper(selectedImages: $selectedImages)
         }
+        .alert(isPresented: $showAlert) {
+            Alert(title: Text("Error"), message: Text(displayResponse), dismissButton: .default(Text("Dismiss")))
         }
-        .padding(.bottom, keyboardHeight)
+
     }
     
     private func finishLoading(message: String) {
