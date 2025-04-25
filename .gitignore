@@ -13,6 +13,7 @@ secrets.json
 FreeStuff.xcodeproj/xcuserdata/
 backup*
 postings.json
+data/
 
 # C extensions
 *.so
