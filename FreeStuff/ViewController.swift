@@ -52,6 +52,10 @@ class ViewController: UIViewController, UITextFieldDelegate {
     var currMap = 1
     let satelliteButton = UIButton(frame: CGRect(x: 10, y: 510, width: 50, height: 50))
     @IBOutlet weak var mapType : UISegmentedControl!
+    
+    // cache data
+    var lastFetchedBounds: (neLat: Double, neLng: Double, swLat: Double, swLng: Double)?
+    var timeLastFetched: Date? = nil
 
 
     override func viewDidLoad() {
@@ -90,8 +94,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
             forAnnotationViewWithReuseIdentifier:MKMapViewDefaultAnnotationViewReuseIdentifier
         )
 
-        loadInitialData()
-
         let button = UIButton()
         button.frame = CGRect(x: 150, y: 150, width: 100, height: 50)
         self.view.addSubview(button)
@@ -109,7 +111,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         super.viewWillAppear(animated)
         // check if a machine was deleted
         if PinViewController.wasDeleted {
-            reloadData()
+            loadPins()
             PinViewController.wasDeleted = false
         }
 
@@ -125,12 +127,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
             addAnnotationsIteratively()
             SettingsViewController.clusterHasChanged = false
         }
-    }
-    
-    func reloadData() {
-        PennyMap.removeAnnotations(artworks)
-        artworks = []
-        loadInitialData()
     }
     
     func addAnnotationsIteratively() {
@@ -217,7 +213,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
             let view = NewMachineFormView(
                 coordinate: coordinate,
                 onPostComplete: {
-                    self.reloadData()
+                    self.loadPins(checkRegionChange: false)
                 }
             )
             let swiftUIViewController = UIHostingController(rootView: view)
@@ -363,9 +359,35 @@ class ViewController: UIViewController, UITextFieldDelegate {
     
     // To load machine locations from JSON
     @available(iOS 13.0, *)
-    func loadInitialData() {
-        let linkToJson = flaskURL + "/postings.json"
-        guard let jsonUrl = URL(string: linkToJson) else { return }
+    func loadPins(checkRegionChange: Bool = true) {
+        print("load pins")
+        // get region
+        let region = PennyMap.region
+        let center = region.center
+        let span = region.span
+
+        let neLat = center.latitude + span.latitudeDelta / 2
+        let neLng = center.longitude + span.longitudeDelta / 2
+        let swLat = center.latitude - span.latitudeDelta / 2
+        let swLng = center.longitude - span.longitudeDelta / 2
+        
+        // Check if the current view is inside the last fetched bounds
+        if checkRegionChange && isNewRegionInsideLastBounds(neLat: neLat, neLng: neLng, swLat: swLat, swLng: swLng) {
+            return
+        }
+        
+        // clear existing data
+        if artworks.count > 0 {
+            PennyMap.removeAnnotations(artworks)
+            artworks = []
+        }
+
+        // Store last bounds to prevent redundant calls later
+        lastFetchedBounds = (neLat: neLat, neLng: neLng, swLat: swLat, swLng: swLng)
+
+        guard let jsonUrl = URL(string: "\(flaskURL)/postings.json?nelat=\(neLat)&nelng=\(neLng)&swlat=\(swLat)&swlng=\(swLng)") else {
+            return
+        }
 
         let task = URLSession.shared.dataTask(with: jsonUrl) { data, response, error in
             if let error = error {
@@ -399,6 +421,17 @@ class ViewController: UIViewController, UITextFieldDelegate {
             }
         }
         task.resume()
+    }
+
+    func isNewRegionInsideLastBounds(neLat: Double, neLng: Double, swLat: Double, swLng: Double) -> Bool {
+        guard let bounds = lastFetchedBounds else {
+            return false
+        }
+
+        return neLat <= bounds.neLat &&
+               neLng <= bounds.neLng &&
+               swLat >= bounds.swLat &&
+               swLng >= bounds.swLng
     }
 
     
@@ -469,6 +502,11 @@ extension ViewController: MKMapViewDelegate {
     func mapView(_ mapView: MKMapView, didSelect view: MKAnnotationView) {
         let gesture = UITapGestureRecognizer(target: self, action: #selector(ViewController.calloutTapped))
         view.addGestureRecognizer(gesture)
+    }
+    
+    func mapView(_ mapView: MKMapView, regionDidChangeAnimated animated: Bool) {
+        // Call backend on every update of the region
+        loadPins()
     }
 
     @objc func calloutTapped(sender:UITapGestureRecognizer) {

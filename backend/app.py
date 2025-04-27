@@ -13,7 +13,7 @@ from slack.errors import SlackApiError
 from flask import jsonify
 from shapely.geometry import mapping
 from geoalchemy2.shape import to_shape
-
+from geoalchemy2.functions import ST_MakeEnvelope
 
 from read_write_postings import insert_posting, Session, Postings, DeletedPosts, process_uploaded_image
 
@@ -77,7 +77,20 @@ def create_posting():
 def get_all_postings():
     session = Session()
     try:
-        postings = session.query(Postings).all()
+        # Check for bounding box parameters
+        nelat = request.args.get("nelat", type=float)
+        nelng = request.args.get("nelng", type=float)
+        swlat = request.args.get("swlat", type=float)
+        swlng = request.args.get("swlng", type=float)
+
+        query = session.query(Postings)
+
+        if None not in (nelat, nelng, swlat, swlng):
+            envelope = ST_MakeEnvelope(swlng, swlat, nelng, nelat, 4326)
+            query = query.filter(Postings.geometry.ST_Within(envelope))
+
+        postings = query.all()
+
         features = []
         for post in postings:
             geom = to_shape(post.geometry)
