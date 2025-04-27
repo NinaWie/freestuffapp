@@ -6,11 +6,9 @@ import numpy as np
 
 # database stuff
 import psycopg2
-from sqlalchemy import Column, Integer, String, create_engine
+from sqlalchemy import Column, Integer, String, create_engine, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import Column, Integer, String, DateTime
-from sqlalchemy.ext.declarative import declarative_base
 from geoalchemy2 import Geometry
 from geoalchemy2.shape import from_shape
 
