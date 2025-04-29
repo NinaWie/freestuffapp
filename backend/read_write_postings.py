@@ -6,7 +6,7 @@ import numpy as np
 
 # database stuff
 import psycopg2
-from sqlalchemy import Column, Integer, String, create_engine, DateTime
+from sqlalchemy import Column, Integer, String, create_engine, DateTime, Date
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from geoalchemy2 import Geometry
@@ -36,8 +36,10 @@ class Postings(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String)
     time_posted = Column(DateTime)
+    expiration_date = Column(Date)
     photo_id = Column(String)
     category = Column(String)
+    subcategory = Column(String)
     description = Column(String)
     external_url = Column(String)
     status = Column(String)
@@ -50,8 +52,10 @@ class DeletedPosts(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String)
     time_posted = Column(DateTime)
+    expiration_date = Column(Date)
     photo_id = Column(String)
     category = Column(String)
+    subcategory = Column(String)
     description = Column(String)
     external_url = Column(String)
     status = Column(String)
@@ -72,14 +76,25 @@ def insert_posting(data, nr_photos: int = 1):
 
         geom = from_shape(Point(lng, lat), srid=4326)
 
+        # prepare expiration date
+        date_string = data.get("expiration_date", "")
+        if len(date_string) > 0:
+            expiration_date = datetime.strptime(date_string, "%d. %B %Y").date()
+            status = "temporary"
+        else:
+            expiration_date = None
+            status = "permanent"
+
         new_posting = Postings(
             name=data.get("name"),
             time_posted=datetime.now(),
+            expiration_date=expiration_date,
             photo_id=",".join(["_" + str(i) for i in range(nr_photos)]),
             category=data.get("category", "Goods"),
+            subcategory=data.get("subcategory", ""),
             description=data.get("description", ""),
             external_url=data.get("external_url"),
-            status=data.get("status", "temporary"),
+            status=status,
             geometry=geom,
         )
         session.add(new_posting)

@@ -93,6 +93,7 @@ def get_all_postings():
 
         features = []
         for post in postings:
+            expire = post.expiration_date.strftime("%Y-%m-%d") if post.expiration_date else ""
             geom = to_shape(post.geometry)
             feature = {
                 "type": "Feature",
@@ -101,8 +102,10 @@ def get_all_postings():
                     "id": post.id,
                     "name": post.name,
                     "time_posted": post.time_posted.split(".")[0][:-3],
+                    "expiration_date": expire,
                     "photo_id": post.photo_id,
                     "category": post.category,
+                    "subcategory": post.subcategory,
                     "description": post.description,
                     "external_url": post.external_url,
                     "status": post.status,
@@ -186,8 +189,10 @@ def delete_post(post_id):
             id=post.id,
             name=post.name,
             time_posted=post.time_posted,
+            expiration_date=post.expiration_date,
             photo_id=post.photo_id,
             category=post.category,
+            subcategory=post.subcategory,
             description=post.description,
             external_url=post.external_url,
             status=post.status,
@@ -204,10 +209,11 @@ def delete_post(post_id):
         post_to_slack(f"Deleted post {post_id} ({mode})")
 
         # move images to deleted folder
-        photo_ids = post.photo_id.split(",")
-        for photo_id in photo_ids:
-            photo_fn = f"{post_id}{photo_id}.jpg"
-            os.rename(os.path.join(PATH_IMAGES, photo_fn), os.path.join(PATH_DELETED, photo_fn))
+        if not "http" in post.photo_id:
+            photo_ids = post.photo_id.split(",")
+            for photo_id in photo_ids:
+                photo_fn = f"{post_id}{photo_id}.jpg"
+                os.rename(os.path.join(PATH_IMAGES, photo_fn), os.path.join(PATH_DELETED, photo_fn))
         # remove comment file
         comment_fn = os.path.join(PATH_COMMENTS, f"{post_id}.json")
         if os.path.exists(comment_fn):

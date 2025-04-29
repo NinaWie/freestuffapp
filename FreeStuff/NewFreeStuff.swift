@@ -204,7 +204,7 @@ struct NewMachineFormView: View {
     @State private var selectedSubcategory: String = ""
 
     let goodsSubcategories = ["Electronics", "Clothing", "Furniture", "Books", "Tools"]
-    let foodSubcategories = ["Fresh Produce", "Baked Goods", "Canned Goods", "Beverages", "Snacks"]
+    let foodSubcategories = ["Fresh Produce", "Baked Goods", "Canned Goods", "Beverages", "Snacks", "Community fridge"]
 
     
     private var keyboardObserver: AnyCancellable?
@@ -349,12 +349,22 @@ struct NewMachineFormView: View {
             finishLoading(message: "Please enter a title and (at least) either an image or a description.")
             return
         }
+        //  format expiration date
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium  // You can use .short, .long, or custom
+        var expirationDateString = formatter.string(from: expirationDate)
+        if isPermanent {
+            expirationDateString = ""
+        }
         
         var urlComponents = URLComponents(string: flaskURL)!
         urlComponents.path = "/add_post"
         urlComponents.queryItems = [
             URLQueryItem(name: "name", value: name),
             URLQueryItem(name: "description", value: description),
+            URLQueryItem(name: "category", value: selectedCategory.rawValue),
+            URLQueryItem(name: "subcategory", value: selectedSubcategory),
+            URLQueryItem(name: "expiration_date", value: expirationDateString),
             URLQueryItem(name: "lon_coord", value: "\(selectedLocation.longitude)"),
             URLQueryItem(name: "lat_coord", value: "\(selectedLocation.latitude)"),
         ]

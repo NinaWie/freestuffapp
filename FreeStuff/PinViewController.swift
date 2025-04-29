@@ -93,6 +93,9 @@ class PinViewController: UITableViewController, UIImagePickerControllerDelegate,
         
         // add time
         timeLabel.text = self.pinData.time_posted
+        if self.pinData.status != "permanent" {
+            timeLabel.text = timeLabel.text! + " (Expires: \(self.pinData.time_expiration))"
+        }
         
         
         // load images asynchronously

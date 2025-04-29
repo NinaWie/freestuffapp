@@ -16,12 +16,14 @@ class Artwork: NSObject, MKAnnotation {
     let coordinate: CLLocationCoordinate2D
     let id: String
     let time_posted: String
+    let time_expiration: String
     let text: String
     let shortDescription: String
     let category: String
+    let subcategory: String
     let photoPaths : [String]
     
-    init(title: String, postDescription: String, link: String, status: String, coordinate: CLLocationCoordinate2D, id: Int, time_posted: String, category: String, photoPaths: [String]) {
+    init(title: String, postDescription: String, link: String, status: String, coordinate: CLLocationCoordinate2D, id: Int, time_posted: String, time_expiration: String, category: String, subcategory: String, photoPaths: [String]) {
         self.title = title
         self.postDescription = postDescription
         self.coordinate = coordinate
@@ -29,9 +31,11 @@ class Artwork: NSObject, MKAnnotation {
         self.status = status
         self.id = String(id)
         self.time_posted = time_posted
+        self.time_expiration = time_expiration
         self.text = self.title! + self.postDescription
         self.shortDescription = self.postDescription.count > 20 ? String(self.postDescription.prefix(20)) + "..." : self.postDescription
         self.category = category
+        self.subcategory = subcategory
         self.photoPaths = photoPaths
         
         super.init()
@@ -55,11 +59,13 @@ class Artwork: NSObject, MKAnnotation {
         link = (properties["external_url"] as? String)
         status = (properties["status"] as? String)!
         time_posted = (properties["time_posted"] as? String)!
+        time_expiration = (properties["expiration_date"] as? String)!
         id = String((properties["id"] as? Int)!)
         coordinate = point.coordinate
         text = title! + postDescription
         shortDescription = postDescription.count > 20 ? String(postDescription.prefix(20)) + "..." : postDescription
         category = (properties["category"] as? String)!
+        subcategory = (properties["subcategory"] as? String)!
         photoPaths = ((properties["photo_id"] as! String).components(separatedBy: ","))
         
         super.init()
