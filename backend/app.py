@@ -59,8 +59,8 @@ def create_posting():
         return jsonify_result, error_code
 
     # Process images
-    if len(request.files) == 0:
-        return jsonify({"error": "No image file found"}), 400
+    # if len(request.files) == 0:
+    #     return jsonify({"error": "No image file found"}), 400
 
     for idx, img_file in enumerate(request.files):
         img_path = os.path.join(PATH_IMAGES, f"{new_post_id}_{idx}.jpg")

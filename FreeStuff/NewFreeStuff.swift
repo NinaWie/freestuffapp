@@ -18,6 +18,8 @@ let maxDistance: Double = 1000
 // variable defining how large the shown region is when changing coordinates
 let regionInMeters: Double = 2 * maxDistance
 let maxNrImages: Int = 5
+let defaultDaysToExpiration: Int = 3
+let maxDaysToExpiration: Int = 20
 
 @available(iOS 13.0, *)
 struct AlertPresenter: UIViewControllerRepresentable {
@@ -178,6 +180,8 @@ struct NewMachineFormView: View {
     // Properties to hold user input
     @State private var name: String = ""
     @State private var description: String = ""
+    @State private var isPermanent: Bool = false
+    @State private var expirationDate: Date = Calendar.current.date(byAdding: .day, value: defaultDaysToExpiration, to: Date())!
     @State private var showFinishedAlert = false
     @State private var isMapPresented = false
     @State private var selectedLocation: CLLocationCoordinate2D
@@ -188,6 +192,21 @@ struct NewMachineFormView: View {
     @State private var showAlert = false
     @State private var isLoading = false
     @State private var keyboardHeight: CGFloat = 0
+    
+    enum MainCategory: String, CaseIterable, Identifiable {
+        case goods = "Goods"
+        case food = "Food"
+
+        var id: String { self.rawValue }
+    }
+
+    @State private var selectedCategory: MainCategory = .goods
+    @State private var selectedSubcategory: String = ""
+
+    let goodsSubcategories = ["Electronics", "Clothing", "Furniture", "Books", "Tools"]
+    let foodSubcategories = ["Fresh Produce", "Baked Goods", "Canned Goods", "Beverages", "Snacks"]
+
+    
     private var keyboardObserver: AnyCancellable?
     var onPostComplete: () -> Void
 
@@ -209,13 +228,51 @@ struct NewMachineFormView: View {
             Section(header: Text("Post Info")) {
                 TextField("Title", text: $name)
 
-                TextEditor(text: $description)
-                    .frame(height: 100)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                ZStack(alignment: .topLeading) {
+                    if description.isEmpty {
+                        Text("Description")
+                            .foregroundColor(Color.gray.opacity(0.6))
+                            .padding(.top, 12)
+                            .padding(.horizontal, 8)
+                    }
+
+                    TextEditor(text: $description)
+                        .frame(height: 100)
+                        .padding(4)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                        )
+                }
+                .padding(.vertical, 4)
+                
+                Picker("Main Category", selection: $selectedCategory) {
+                    ForEach(MainCategory.allCases) { category in
+                        Text(category.rawValue).tag(category)
+                    }
+                }
+
+                if selectedCategory == .goods || selectedCategory == .food {
+                    Picker("Subcategory (Optional)", selection: $selectedSubcategory) {
+                        Text("None").tag("") // Optional
+                        ForEach(selectedCategory == .goods ? goodsSubcategories : foodSubcategories, id: \.self) { subcategory in
+                            Text(subcategory).tag(subcategory)
+                        }
+                    }
+                }
+
+                
+                // is permanent or expires
+                Toggle("Permanent", isOn: $isPermanent)
+
+                if !isPermanent {
+                    DatePicker(
+                        "Expires On",
+                        selection: $expirationDate,
+                        in: Date()...Calendar.current.date(byAdding: .day, value: maxDaysToExpiration, to: Date())!,
+                        displayedComponents: [.date]
                     )
-                    .padding(.vertical, 4)
+                }
             }
 
             Section(header: Text("Location")) {
@@ -288,8 +345,8 @@ struct NewMachineFormView: View {
     // Function to handle the submission of the request
     private func submitRequest() {
         isLoading = true
-        if name == "" || selectedImages.count==0 {
-            finishLoading(message: "Please enter all information & upload image")
+        if name == "" || (selectedImages.count==0 && description == "") {
+            finishLoading(message: "Please enter a title and (at least) either an image or a description.")
             return
         }
         

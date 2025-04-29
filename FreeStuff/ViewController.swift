@@ -111,7 +111,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         super.viewWillAppear(animated)
         // check if a machine was deleted
         if PinViewController.wasDeleted {
-            loadPins()
+            loadPins(checkRegionChange: false)
             PinViewController.wasDeleted = false
         }
 

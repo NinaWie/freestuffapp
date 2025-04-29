@@ -138,6 +138,7 @@ class PinViewController: UITableViewController, UIImagePickerControllerDelegate,
         }
     
     func getImage(id: String){
+        if id == "" { return }
         var link_to_image = "\(imageURL)/\(id).jpg"
         if id.contains("_") {
             link_to_image = "\(imageURL)/\(pinData.id)\(id).jpg"
