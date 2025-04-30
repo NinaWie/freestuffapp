@@ -74,14 +74,33 @@ class ViewController: UIViewController, UITextFieldDelegate {
         // Results should be displayed in same searchbar as used for searching
         searchController.obscuresBackgroundDuringPresentation = false
         searchController.searchBar.placeholder = "Search posting"
-        searchController.hidesNavigationBarDuringPresentation = false
+        searchController.hidesNavigationBarDuringPresentation = true
         searchController.searchBar.overrideUserInterfaceStyle = .light
         // iOS 11 compatability issue
         navigationItem.searchController = searchController
         // Disable search bar if view is changed
         definesPresentationContext = true
         
-
+        // config button
+        let configButton = UIBarButtonItem(
+            image: UIImage(systemName: "gearshape"),
+            style: .plain,
+            target: self,
+            action: #selector(configButtonTapped)
+        )
+        configButton.tintColor = .black
+        navigationItem.rightBarButtonItem = configButton
+        
+        // about button
+        let aboutButton = UIBarButtonItem(
+            image: UIImage(systemName: "info.circle"),
+            style: .plain,
+            target: self,
+            action: #selector(aboutButtonTapped)
+        )
+        aboutButton.tintColor = .black
+        navigationItem.leftBarButtonItem = aboutButton
+        
         // Check and enable localization (blue dot)
         checkLocationServices()
         
@@ -118,10 +137,12 @@ class ViewController: UIViewController, UITextFieldDelegate {
         // each time the view appears, check colours of the pins -> maybe add again to mark pins as favourite
 //        check_json_dict()
         // check whether some setting has changed, if yes, reload all data on the map
-        if SettingsViewController.hasChanged {
-            addAnnotationsIteratively()
-            SettingsViewController.hasChanged = false
-        }
+        if #available(iOS 14.0, *) {
+            if FilterViewController.hasChanged {
+                addAnnotationsIteratively()
+                FilterViewController.hasChanged = false
+            }
+        } 
         if SettingsViewController.clusterHasChanged {
             PennyMap.removeAnnotations(artworks)
             addAnnotationsIteratively()
@@ -178,7 +199,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
     
     func addSettingsButton(){
-        let image = UIImage(systemName: "gearshape", withConfiguration: UIImage.SymbolConfiguration(pointSize: 16, weight: .bold, scale: .large))?.withTintColor(.gray)
+        let image = UIImage(systemName: "line.3.horizontal.decrease", withConfiguration: UIImage.SymbolConfiguration(pointSize: 16, weight: .bold, scale: .large))?.withTintColor(.gray)
         settingsbutton.backgroundColor = .white
         settingsbutton.layer.cornerRadius = 0.5 * settingsbutton.bounds.size.width
         settingsbutton.clipsToBounds = true
@@ -189,6 +210,16 @@ class ViewController: UIViewController, UITextFieldDelegate {
         addShadow(button: settingsbutton)
 
         PennyMap.addSubview(settingsbutton)
+    }
+    
+    @objc func configButtonTapped() {
+        // go to configuration screen
+        self.performSegue(withIdentifier: "ShowSettingsViewController", sender: self)
+    }
+    
+    @objc func aboutButtonTapped() {
+        // go to about screen
+        self.performSegue(withIdentifier: "ShowAboutViewController", sender: self)
     }
     
     func addNewButton(){

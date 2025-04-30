@@ -24,7 +24,6 @@ class SettingsViewController: UITableViewController {
     @IBOutlet weak var showFoodSwitch: UISwitch!
     @IBOutlet weak var clusterPinsSwitch: UISwitch!
     
-    static var hasChanged = false
     static var clusterHasChanged = false
 
     
@@ -54,13 +53,6 @@ class SettingsViewController: UITableViewController {
         let user_settings = UserDefaults.standard
         clusterPinsSwitch.isOn = user_settings.value(forKey: "clusterPinSwitch") as? Bool ?? default_switches["clusterPinSwitch"] as! Bool
         clusterPinsSwitch.addTarget(self, action: #selector(clusterPins), for: .valueChanged)
-        // Machine status switches
-        // 1) goods switch
-        showGoodsSwitch.isOn = user_settings.value(forKey: "showGoodsSwitch") as? Bool ?? default_switches["showGoodsSwitch"] as! Bool
-        showGoodsSwitch.addTarget(self, action: #selector(showGoods), for: .valueChanged)
-        // 2) visied switch
-        showFoodSwitch.isOn = user_settings.value(forKey: "showFoodSwitch") as? Bool ?? default_switches["showFoodSwitch"] as! Bool
-        showFoodSwitch.addTarget(self, action: #selector(showFood), for: .valueChanged)
     }
     
     @objc func reportProblem (sender: UIButton!){
@@ -69,25 +61,14 @@ class SettingsViewController: UITableViewController {
         ).addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "error"
         UIApplication.shared.openURL(URL(string:mailtostring )!)
     }
-    // Functions for Switches
-    @objc func showGoods(sender:UISwitch!) {
-        userdefauls_helper(defaultsKey: "showGoodsSwitch", isOn: sender.isOn)
-    }
-    @objc func showFood(sender:UISwitch!) {
-        userdefauls_helper(defaultsKey: "showFoodSwitch", isOn: sender.isOn)
-    }
+
     @objc func clusterPins(sender:UISwitch!) {
-        userdefauls_helper(defaultsKey: "clusterPinSwitch", isOn: sender.isOn)
-    }
-    func userdefauls_helper(defaultsKey: String, isOn: Bool) {
-        UserDefaults.standard.set(isOn, forKey: defaultsKey)
+        let defaultsKey: String = "clusterPinSwitch"
+     
+        UserDefaults.standard.set(sender.isOn, forKey: defaultsKey)
         UserDefaults.standard.synchronize()
-        if defaultsKey == "clusterPinSwitch" {
-            SettingsViewController.clusterHasChanged = true
-        }
-        else {
-            SettingsViewController.hasChanged = true
-        }
+        
+        SettingsViewController.clusterHasChanged = true
     }
     
     // Function for radius slider for push notifications

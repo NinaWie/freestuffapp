@@ -13,6 +13,10 @@ import PhotosUI
 import Combine
 import CoreLocation
 
+let goodsSubcategories = ["Electronics", "Clothing", "Furniture", "Books", "Tools"]
+let foodSubcategories = ["Fresh Produce", "Baked Goods", "Canned Goods", "Beverages", "Snacks", "Community fridge"]
+
+
 // how far the user can maximally be from the location
 let maxDistance: Double = 1000
 // variable defining how large the shown region is when changing coordinates
@@ -203,10 +207,6 @@ struct NewMachineFormView: View {
     @State private var selectedCategory: MainCategory = .goods
     @State private var selectedSubcategory: String = ""
 
-    let goodsSubcategories = ["Electronics", "Clothing", "Furniture", "Books", "Tools"]
-    let foodSubcategories = ["Fresh Produce", "Baked Goods", "Canned Goods", "Beverages", "Snacks", "Community fridge"]
-
-    
     private var keyboardObserver: AnyCancellable?
     var onPostComplete: () -> Void
 

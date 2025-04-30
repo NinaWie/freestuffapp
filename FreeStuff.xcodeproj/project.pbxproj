@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		8319D8D027414AC100E97D93 /* ZoomViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8319D8CF27414AC100E97D93 /* ZoomViewController.swift */; };
 		83514C1B2DBA78620063189B /* Geoutils.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83514C1A2DBA785C0063189B /* Geoutils.swift */; };
+		83514C1D2DC232A60063189B /* FilterViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83514C1C2DC2329B0063189B /* FilterViewController.swift */; };
 		839CF440267B78AB00E259D9 /* SettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 839CF43F267B78AB00E259D9 /* SettingsViewController.swift */; };
 		83BDBBBC2D87622300B66FBD /* NewFreeStuff.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83BDBBBB2D87621F00B66FBD /* NewFreeStuff.swift */; };
 		83BDBBBE2D876AF100B66FBD /* ImagePickerHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83BDBBBD2D876AED00B66FBD /* ImagePickerHelper.swift */; };
@@ -47,6 +48,7 @@
 /* Begin PBXFileReference section */
 		8319D8CF27414AC100E97D93 /* ZoomViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoomViewController.swift; sourceTree = "<group>"; };
 		83514C1A2DBA785C0063189B /* Geoutils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Geoutils.swift; sourceTree = "<group>"; };
+		83514C1C2DC2329B0063189B /* FilterViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilterViewController.swift; sourceTree = "<group>"; };
 		839CF43F267B78AB00E259D9 /* SettingsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewController.swift; sourceTree = "<group>"; };
 		83BDBBBB2D87621F00B66FBD /* NewFreeStuff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewFreeStuff.swift; sourceTree = "<group>"; };
 		83BDBBBD2D876AED00B66FBD /* ImagePickerHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagePickerHelper.swift; sourceTree = "<group>"; };
@@ -123,6 +125,7 @@
 			children = (
 				83514C1A2DBA785C0063189B /* Geoutils.swift */,
 				839CF43F267B78AB00E259D9 /* SettingsViewController.swift */,
+				83514C1C2DC2329B0063189B /* FilterViewController.swift */,
 				83D226CC2620F4910050ED9E /* PinViewController.swift */,
 				9FC12D6A230E9B1E00016617 /* AboutViewController.swift */,
 				9F9F31A42300B40900C0E854 /* AppDelegate.swift */,
@@ -304,6 +307,7 @@
 			files = (
 				9F9F31A72300B40900C0E854 /* ViewController.swift in Sources */,
 				8319D8D027414AC100E97D93 /* ZoomViewController.swift in Sources */,
+				83514C1D2DC232A60063189B /* FilterViewController.swift in Sources */,
 				9F9C64A52A10D12E00C57887 /* VersionManager.swift in Sources */,
 				9F421AB3261B9755004197B4 /* ArtworkViews.swift in Sources */,
 				83D226CD2620F4910050ED9E /* PinViewController.swift in Sources */,
