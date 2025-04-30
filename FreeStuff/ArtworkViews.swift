@@ -6,6 +6,27 @@
 import Foundation
 import MapKit
 
+let categorySymbolMap: [String: String] = [
+    // Main categories
+    "Food": "leaf.fill",
+    "Goods": "archivebox.fill",
+
+    // Food subcategories
+    "Fresh Produce": "carrot.fill",
+    "Baked Goods": "birthday.cake",
+    "Canned Goods": "cube.box",
+    "Beverages": "cup.and.saucer",
+    "Snacks": "popcorn",
+    "Community fridge": "refrigerator.fill",
+
+    // Goods subcategories
+    "Electronics": "desktopcomputer",
+    "Clothing": "tshirt",
+    "Furniture": "sofa",
+    "Books": "books.vertical",
+    "Tools": "hammer"
+]
+
 class ArtworkMarkerView: MKMarkerAnnotationView {
 
   var clusterPins: Bool = true
@@ -24,6 +45,15 @@ class ArtworkMarkerView: MKMarkerAnnotationView {
 
         // Set marker color
         markerTintColor = artwork.markerTintColor
+        if #available(iOS 13.0, *) {
+            let key = artwork.subcategory.isEmpty ? artwork.category : artwork.subcategory
+            if let symbolName = categorySymbolMap[key] {
+                glyphImage = UIImage(systemName: symbolName)
+            } else {
+                glyphImage = UIImage(systemName: "questionmark.circle") // fallback
+            }
+
+        }
         
         // Create view when marker is pressed
         let identifier = "marker"

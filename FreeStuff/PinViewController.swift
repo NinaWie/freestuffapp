@@ -12,7 +12,7 @@ let flaskURL = "http://127.0.0.1:5000"
 let imageURL = "http://37.120.179.15:8000/freestuff/images"
 let commentURL = "http://37.120.179.15:8000/freestuff/comments"
 
-let maxDistanceFromItem: Double = 1000.0 // users within 100m can delete a post
+let maxDistanceFromItem: Double = 100.0 // users within 100m can delete a post
 
 class PinViewController: UITableViewController, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
     

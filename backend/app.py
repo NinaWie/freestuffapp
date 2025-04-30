@@ -208,16 +208,17 @@ def delete_post(post_id):
 
         post_to_slack(f"Deleted post {post_id} ({mode})")
 
-        # move images to deleted folder
-        if not "http" in post.photo_id:
-            photo_ids = post.photo_id.split(",")
-            for photo_id in photo_ids:
-                photo_fn = f"{post_id}{photo_id}.jpg"
-                os.rename(os.path.join(PATH_IMAGES, photo_fn), os.path.join(PATH_DELETED, photo_fn))
         # remove comment file
         comment_fn = os.path.join(PATH_COMMENTS, f"{post_id}.json")
         if os.path.exists(comment_fn):
             os.rename(comment_fn, os.path.join(PATH_DELETED, f"{post_id}.json"))
+
+        # move images to deleted folder
+        if not "http" in post.photo_id and len(post.photo_id) > 0:
+            photo_ids = post.photo_id.split(",")
+            for photo_id in photo_ids:
+                photo_fn = f"{post_id}{photo_id}.jpg"
+                os.rename(os.path.join(PATH_IMAGES, photo_fn), os.path.join(PATH_DELETED, photo_fn))
 
         return {"status": "success", "message": f"Post {post_id} deleted."}, 200
     except Exception as e:

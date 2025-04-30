@@ -7,6 +7,7 @@ import Foundation
 import MapKit
 import Contacts
 
+let maxHoursColorGradient: Double = 120 // pins are coloured with max 5 days
 
 class Artwork: NSObject, MKAnnotation {
     let title: String?
@@ -85,19 +86,40 @@ class Artwork: NSObject, MKAnnotation {
         return mapItem
     }
     
-//    func getLink() -> String {
-//        return self.link
-//    }
+    //    func getLink() -> String {
+    //        return self.link
+    //    }
+    
+    func parseDate(_ string: String) -> Date? {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd HH:mm"
+        formatter.timeZone = .current
+        return formatter.date(from: string.components(separatedBy: ".").first ?? "")
+    }
+
+    func colorFromGreenToRed(hoursSince: Double) -> UIColor {
+        let clampedRatio = min(max(hoursSince / maxHoursColorGradient, 0), 1)  // 0 = green, 1 = red
+        // Hue: 0.33 = green, 0 = red
+        let hue = (1 - clampedRatio) * 0.33
+        return UIColor(hue: hue, saturation: 1.0, brightness: 0.9, alpha: 1.0)
+    }
     
     var markerTintColor: UIColor  {
-      switch category {
-      case "Food":
-        return .green
-      case "Goods":
-        return .blue
-      default:
-        return .black
-      }
+        // Handle coloring
+        if status == "permanent" {
+            return .black
+        } else {
+            if let postDate = parseDate(time_posted) {
+                // in days:
+//                let daysAgo = Calendar.current.dateComponents([.day], from: postDate, to: Date()).day ?? 0
+//                let col = colorForDaysAgo(daysAgo)
+                let hoursAgo = Date().timeIntervalSince(postDate) / 3600
+                let col = colorFromGreenToRed(hoursSince: hoursAgo)
+                return col
+            } else {
+                return .gray // fallback
+            }
+        }
     }
 }
 
