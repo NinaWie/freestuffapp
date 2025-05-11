@@ -11,7 +11,8 @@ import Contacts
 let default_switches: [String: Bool] = [
     "showGoodsSwitch": true,
     "showFoodSwitch": true,
-    "clusterPinSwitch": false
+    "clusterPinSwitch": false,
+    "showPermanentSwitch": true
 ]
 
 class SettingsViewController: UITableViewController {
@@ -20,8 +21,6 @@ class SettingsViewController: UITableViewController {
     @IBOutlet weak var pushSwitch: UISwitch!
     @IBOutlet weak var reportProblemButton: UIButton!
     @IBOutlet weak var radiusSlider: UISlider!
-    @IBOutlet weak var showGoodsSwitch: UISwitch!
-    @IBOutlet weak var showFoodSwitch: UISwitch!
     @IBOutlet weak var clusterPinsSwitch: UISwitch!
     
     static var clusterHasChanged = false
