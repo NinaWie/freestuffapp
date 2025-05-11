@@ -107,7 +107,7 @@ class Artwork: NSObject, MKAnnotation {
     var markerTintColor: UIColor  {
         // Handle coloring
         if status == "permanent" {
-            return .black
+            return .blue
         } else {
             if let postDate = parseDate(time_posted) {
                 // in days:

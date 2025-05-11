@@ -99,7 +99,12 @@ class PinViewController: UITableViewController, UIImagePickerControllerDelegate,
             timeLabel.text = timeLabel.text! + "\nExpires: \(self.pinData.time_expiration)"
         }
         // add category
-        categoryLabel.text = "Category: \(self.pinData.category) - \(self.pinData.subcategory)"
+        if !self.pinData.subcategory.isEmpty {
+            categoryLabel.text = "Category: \(self.pinData.category) - \(self.pinData.subcategory)"
+        }
+        else {
+            categoryLabel.text = "Category: \(self.pinData.category)"
+        }
         
         
         // load images asynchronously
