@@ -1,6 +1,6 @@
 import json
 from shapely.geometry import Point
-from datetime import datetime
+from datetime import datetime, timedelta
 from PIL import Image, ImageOps
 import numpy as np
 
@@ -11,6 +11,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from geoalchemy2 import Geometry
 from geoalchemy2.shape import from_shape
+from geoalchemy2.functions import ST_MakeEnvelope
 
 
 def init_session():
@@ -108,6 +109,62 @@ def insert_posting(data, nr_photos: int = 1):
         print("Error:", e)
         session.rollback()
         return {"error": str(e)}, 500, None
+    finally:
+        session.close()
+
+
+def load_filter_postings(request_args):
+    session = Session()
+
+    try:
+        # Location bounding box
+        nelat = request_args.get("nelat", type=float)
+        nelng = request_args.get("nelng", type=float)
+        swlat = request_args.get("swlat", type=float)
+        swlng = request_args.get("swlng", type=float)
+
+        # Filter parameters
+        show_goods = request_args.get("showGoods", default="1") == "1"
+        show_food = request_args.get("showFood", default="1") == "1"
+        goods_subcategory = request_args.get("goodsSubcategory", default="All")
+        food_subcategory = request_args.get("foodSubcategory", default="All")
+        time_posted_max_days = request_args.get("timePostedMax", type=float, default=20)
+        show_permanent = request_args.get("showPermanent", default="1") == "1"
+
+        query = session.query(Postings)
+
+        # Bounding box filter
+        if None not in (nelat, nelng, swlat, swlng):
+            envelope = ST_MakeEnvelope(swlng, swlat, nelng, nelat, 4326)
+            query = query.filter(Postings.geometry.ST_Within(envelope))
+
+        # Category filters
+        category_filters = []
+        if show_goods:
+            category_filters.append("Goods")
+        if show_food:
+            category_filters.append("Food")
+        # Only need to filter if we only want one of the categories
+        if len(category_filters) < 2:
+            query = query.filter(Postings.category.in_(category_filters))
+
+        # Subcategory filters
+        if goods_subcategory != "All" and show_goods:
+            query = query.filter(~((Postings.category == "Goods") & (Postings.subcategory != goods_subcategory)))
+        if food_subcategory != "All" and show_food:
+            query = query.filter(~((Postings.category == "Food") & (Postings.subcategory != food_subcategory)))
+
+        # Permanent filter
+        if not show_permanent:
+            query = query.filter(Postings.status != "permanent")
+
+        # Time filter
+        cutoff_time = datetime.utcnow() - timedelta(days=time_posted_max_days)
+        query = query.filter(Postings.time_posted >= str(cutoff_time))
+
+        postings = query.all()
+
+        return postings
     finally:
         session.close()
 

@@ -139,10 +139,10 @@ class ViewController: UIViewController, UITextFieldDelegate {
         // check whether some setting has changed, if yes, reload all data on the map
         if #available(iOS 14.0, *) {
             if FilterViewController.hasChanged {
-                addAnnotationsIteratively()
+                loadPins(checkRegionChange: false)
                 FilterViewController.hasChanged = false
             }
-        } 
+        }
         if SettingsViewController.clusterHasChanged {
             PennyMap.removeAnnotations(artworks)
             addAnnotationsIteratively()
@@ -151,25 +151,28 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
     
     func addAnnotationsIteratively() {
-        let relevantUserDefauls : [String] = ["showGoodsSwitch", "showFoodSwitch"]
-        var includedStates : [String] = []
-        for userdefault in relevantUserDefauls {
-            let user_settings = UserDefaults.standard
-            let value = (user_settings.value(forKey: userdefault) as? Bool ?? default_switches[userdefault])
-            if value! {
-                let partStr = String( userdefault.prefix(userdefault.count - 6))
-                includedStates.append(partStr)
-            }
-        }
-
-        for artwork in artworks {
-            let categoryToSwitch = "show\(artwork.category)"
-            if (includedStates.contains(categoryToSwitch)) {
-                    PennyMap.addAnnotation(artwork)
-            } else if (!includedStates.contains(categoryToSwitch)) {
-                PennyMap.removeAnnotation(artwork)
-            }
-        }
+        PennyMap.addAnnotations(artworks)
+        
+//     DEPRECATED code for adding artworks one by one and checking for filter, instead of loading just the relevant ones from the database
+//        let relevantUserDefauls : [String] = ["showGoodsSwitch", "showFoodSwitch"]
+//        var includedStates : [String] = []
+//        for userdefault in relevantUserDefauls {
+//            let user_settings = UserDefaults.standard
+//            let value = (user_settings.value(forKey: userdefault) as? Bool ?? default_switches[userdefault])
+//            if value! {
+//                let partStr = String( userdefault.prefix(userdefault.count - 6))
+//                includedStates.append(partStr)
+//            }
+//        }
+//
+//        for artwork in artworks {
+//            let categoryToSwitch = "show\(artwork.category)"
+//            if (includedStates.contains(categoryToSwitch)) {
+//                    PennyMap.addAnnotation(artwork)
+//            } else if (!includedStates.contains(categoryToSwitch)) {
+//                PennyMap.removeAnnotation(artwork)
+//            }
+//        }
         
     }
     
@@ -416,9 +419,31 @@ class ViewController: UIViewController, UITextFieldDelegate {
         // Store last bounds to prevent redundant calls later
         lastFetchedBounds = (neLat: neLat, neLng: neLng, swLat: swLat, swLng: swLng)
 
-        guard let jsonUrl = URL(string: "\(flaskURL)/postings.json?nelat=\(neLat)&nelng=\(neLng)&swlat=\(swLat)&swlng=\(swLng)") else {
-            return
-        }
+        // get userSettings
+        let userSettings = UserDefaults.standard
+        let showGoods = userSettings.bool(forKey: "showGoodsSwitch")
+        let showFood = userSettings.bool(forKey: "showFoodSwitch")
+        let goodsSubcategory = userSettings.string(forKey: "selectedGoodsCategory") ?? "All"
+        let foodSubcategory = userSettings.string(forKey: "selectedFoodCategory") ?? "All"
+        let timePostedMax = userSettings.float(forKey: "timePostedMax")
+        let showPermanent = userSettings.bool(forKey: "showPermanentSwitch")
+
+        // Construct the URL with query parameters
+        var urlComponents = URLComponents(string: "\(flaskURL)/postings.json")!
+        urlComponents.queryItems = [
+            URLQueryItem(name: "nelat", value: "\(neLat)"),
+            URLQueryItem(name: "nelng", value: "\(neLng)"),
+            URLQueryItem(name: "swlat", value: "\(swLat)"),
+            URLQueryItem(name: "swlng", value: "\(swLng)"),
+            URLQueryItem(name: "showGoods", value: showGoods ? "1" : "0"),
+            URLQueryItem(name: "showFood", value: showFood ? "1" : "0"),
+            URLQueryItem(name: "goodsSubcategory", value: goodsSubcategory),
+            URLQueryItem(name: "foodSubcategory", value: foodSubcategory),
+            URLQueryItem(name: "timePostedMax", value: "\(timePostedMax)"),
+            URLQueryItem(name: "showPermanent", value: showPermanent ? "1": "0")
+        ]
+
+        guard let jsonUrl = urlComponents.url else { return }
 
         let task = URLSession.shared.dataTask(with: jsonUrl) { data, response, error in
             if let error = error {

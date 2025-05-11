@@ -13,9 +13,15 @@ from slack.errors import SlackApiError
 from flask import jsonify
 from shapely.geometry import mapping
 from geoalchemy2.shape import to_shape
-from geoalchemy2.functions import ST_MakeEnvelope
 
-from read_write_postings import insert_posting, Session, Postings, DeletedPosts, process_uploaded_image
+from read_write_postings import (
+    insert_posting,
+    Session,
+    Postings,
+    DeletedPosts,
+    process_uploaded_image,
+    load_filter_postings,
+)
 
 with open("blocked_ips.json", "r") as infile:
     # NOTE: blocking an IP requires restart of app.py via waitress
@@ -75,47 +81,31 @@ def create_posting():
 
 @app.route("/postings.json", methods=["GET"])
 def get_all_postings():
-    session = Session()
-    try:
-        # Check for bounding box parameters
-        nelat = request.args.get("nelat", type=float)
-        nelng = request.args.get("nelng", type=float)
-        swlat = request.args.get("swlat", type=float)
-        swlng = request.args.get("swlng", type=float)
+    postings = load_filter_postings(request.args)
 
-        query = session.query(Postings)
+    features = []
+    for post in postings:
+        expire = post.expiration_date.strftime("%Y-%m-%d") if post.expiration_date else ""
+        geom = to_shape(post.geometry)
+        feature = {
+            "type": "Feature",
+            "geometry": mapping(geom),
+            "properties": {
+                "id": post.id,
+                "name": post.name,
+                "time_posted": post.time_posted.split(".")[0][:-3],
+                "expiration_date": expire,
+                "photo_id": post.photo_id,
+                "category": post.category,
+                "subcategory": post.subcategory,
+                "description": post.description,
+                "external_url": post.external_url,
+                "status": post.status,
+            },
+        }
+        features.append(feature)
 
-        if None not in (nelat, nelng, swlat, swlng):
-            envelope = ST_MakeEnvelope(swlng, swlat, nelng, nelat, 4326)
-            query = query.filter(Postings.geometry.ST_Within(envelope))
-
-        postings = query.all()
-
-        features = []
-        for post in postings:
-            expire = post.expiration_date.strftime("%Y-%m-%d") if post.expiration_date else ""
-            geom = to_shape(post.geometry)
-            feature = {
-                "type": "Feature",
-                "geometry": mapping(geom),
-                "properties": {
-                    "id": post.id,
-                    "name": post.name,
-                    "time_posted": post.time_posted.split(".")[0][:-3],
-                    "expiration_date": expire,
-                    "photo_id": post.photo_id,
-                    "category": post.category,
-                    "subcategory": post.subcategory,
-                    "description": post.description,
-                    "external_url": post.external_url,
-                    "status": post.status,
-                },
-            }
-            features.append(feature)
-
-        return jsonify({"type": "FeatureCollection", "features": features})
-    finally:
-        session.close()
+    return jsonify({"type": "FeatureCollection", "features": features})
 
 
 @app.route("/add_comment", methods=["GET"])
