@@ -25,6 +25,7 @@ class PinViewController: UITableViewController, UIImagePickerControllerDelegate,
     @IBOutlet weak var submitButton: UIButton!
     @IBOutlet weak var commentTextField: UITextField!
     @IBOutlet weak var timeLabel: UILabel!
+    @IBOutlet weak var categoryLabel: UILabel!
     
     @IBOutlet weak var scamPostButton: UIButton!
     @IBOutlet weak var deletePostButton: UIButton!
@@ -92,10 +93,13 @@ class PinViewController: UITableViewController, UIImagePickerControllerDelegate,
         addressLabel.text = self.pinData.postDescription
         
         // add time
-        timeLabel.text = self.pinData.time_posted
+        timeLabel.numberOfLines = 0
+        timeLabel.text = "Posted: \(self.pinData.time_posted)"
         if self.pinData.status != "permanent" {
-            timeLabel.text = timeLabel.text! + " (Expires: \(self.pinData.time_expiration))"
+            timeLabel.text = timeLabel.text! + "\nExpires: \(self.pinData.time_expiration)"
         }
+        // add category
+        categoryLabel.text = "Category: \(self.pinData.category) - \(self.pinData.subcategory)"
         
         
         // load images asynchronously
