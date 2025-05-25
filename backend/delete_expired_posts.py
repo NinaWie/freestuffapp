@@ -22,7 +22,7 @@ def delete_expired_posts():
     try:
         today = date.today()
         expired_posts = (
-            session.query(Postings).filter(Postings.status == "temporary", Postings.expiration_date <= today).all()
+            session.query(Postings).filter(Postings.status == "temporary", Postings.expiration_date < today).all()
         )
 
         print(f"[{datetime.now()}] Found {len(expired_posts)} expired posts.")
