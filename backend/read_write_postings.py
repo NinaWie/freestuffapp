@@ -73,14 +73,14 @@ def insert_posting(data, nr_photos: int = 1):
         lng = data.get("lon_coord")
         lat = data.get("lat_coord")
         if lng is None or lat is None:
-            return {"error": "Missing coordinates"}, 400
+            return {"error": "Missing coordinates"}, 400, -1
 
         geom = from_shape(Point(lng, lat), srid=4326)
 
         # prepare expiration date
         date_string = data.get("expiration_date", "")
         if len(date_string) > 0:
-            expiration_date = datetime.strptime(date_string, "%d. %B %Y").date()
+            expiration_date = datetime.strptime(date_string, "%d. %b %Y").date()
             status = "temporary"
         else:
             expiration_date = None

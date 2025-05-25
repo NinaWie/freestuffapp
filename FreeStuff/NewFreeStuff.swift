@@ -382,7 +382,7 @@ struct NewMachineFormView: View {
 
         // Loop through the selected images and append each to the body
         for (index, image) in images.enumerated() {
-            guard let imageData = image.jpegData(compressionQuality: 1.0) else {
+            guard let imageData = image.jpegData(compressionQuality: 0.5) else {
                 print("Failed to convert image to data")
                 finishLoading(message: "Something went wrong with your image")
                 return

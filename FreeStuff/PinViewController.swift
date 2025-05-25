@@ -8,7 +8,8 @@ import MapKit
 
 var FOUNDIMAGE : Bool = false
 
-let flaskURL = "http://127.0.0.1:5000"
+let flaskURL = "http://freestuffapp.duckdns.org/"
+// debug: "http://127.0.0.1:5000"
 let imageURL = "http://37.120.179.15:8000/freestuff/images"
 let commentURL = "http://37.120.179.15:8000/freestuff/comments"
 
