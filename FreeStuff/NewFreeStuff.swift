@@ -382,9 +382,17 @@ struct NewMachineFormView: View {
 
         // Loop through the selected images and append each to the body
         for (index, image) in images.enumerated() {
-            guard let imageData = image.jpegData(compressionQuality: 0.5) else {
-                print("Failed to convert image to data")
-                finishLoading(message: "Something went wrong with your image")
+            
+            var compressedData = image.jpegData(compressionQuality: 0.6)
+            let maxSizeKB = 500
+
+            var quality: CGFloat = 0.9
+            while let data = compressedData, data.count > maxSizeKB * 1024, quality > 0.1 {
+                quality -= 0.1
+                compressedData = image.jpegData(compressionQuality: quality)
+            }
+            guard let imageData = compressedData else {
+                print("Failed to compress image under size limit")
                 return
             }
 
