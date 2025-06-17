@@ -4,7 +4,7 @@ import os
 
 import pandas as pd
 
-with open(os.path.join("geodata", "place_names.json"), "r") as infile:
+with open(os.path.join("telegram_utils", "geodata", "place_names.json"), "r") as infile:
     plz_names = json.load(infile)
     postal_or_kreis = plz_names["names"]
     postal_name_mapping = plz_names["name_mapping"]

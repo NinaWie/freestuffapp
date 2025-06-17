@@ -70,12 +70,15 @@ def insert_posting(data, nr_photos: int = 1):
     session = Session()
     try:
         # Extract and validate fields
-        lng = data.get("lon_coord")
-        lat = data.get("lat_coord")
-        if lng is None or lat is None:
-            return {"error": "Missing coordinates"}, 400, -1
+        if "geometry" in data:
+            geom = from_shape(data["geometry"], srid=4326)
+        else:
+            lng = data.get("lon_coord")
+            lat = data.get("lat_coord")
+            if lng is None or lat is None:
+                return {"error": "Missing coordinates"}, 400, -1
 
-        geom = from_shape(Point(lng, lat), srid=4326)
+            geom = from_shape(Point(lng, lat), srid=4326)
 
         # prepare expiration date
         date_string = data.get("expiration_date", "")
@@ -86,9 +89,12 @@ def insert_posting(data, nr_photos: int = 1):
             expiration_date = None
             status = "permanent"
 
+        if "time_posted" not in data:
+            data["time_posted"] = datetime.now()
+
         new_posting = Postings(
             name=data.get("name"),
-            time_posted=datetime.now(),
+            time_posted=data["time_posted"],
             expiration_date=expiration_date,
             photo_id=",".join(["_" + str(i) for i in range(nr_photos)]),
             category=data.get("category", "Goods"),

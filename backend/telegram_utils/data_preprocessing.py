@@ -4,7 +4,7 @@ import os
 import geopandas as gpd
 import pandas as pd
 
-from utils import clean_up_images
+from .utils import clean_up_images
 
 OUT_PATH = "../../images/freestuff"
 IMG_OUT_PATH = "../../images/freestuff/images"
@@ -37,12 +37,11 @@ def get_used_ids():
 
 
 # load streets and plz coordinates
-path="geodata"
-strasse_zu_coord = pd.read_csv(os.path.join(path, "strassen.csv"))
+strasse_zu_coord = pd.read_csv(os.path.join("telegram_utils", "geodata", "strassen.csv"))
 
 
 # set index
-zurich_zip = gpd.read_file(os.path.join(path, "zurich.gpkg"))
+zurich_zip = gpd.read_file(os.path.join("telegram_utils", "geodata", "zurich.gpkg"))
 zurich_zip = zurich_zip.set_index("name").sort_index()
 
 def create_geojson(data):
