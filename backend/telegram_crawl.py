@@ -28,6 +28,10 @@ def check_msg_relevant(msg):
         "suche" in msg.text.lower() or "kein kaufen/verkaufen hier" in msg.text.lower()
     )
 
+headings = {
+    "Goods": "**Taken from Telegram Chat Unkommerzieller Marktplatz Zuerich**\n", 
+    "Food": "**Taken from Telegram Chat Stop Foodwaste in Zueri**\n"
+}
 
 async def download_img(msg, id_current, client=None):
     """Download potential images from a message."""
@@ -87,7 +91,7 @@ def handle_incoming_message(msg, last_msg, chat_nr):
     msg_dict = {
         "sender": sender_name,
         "message": msg.text,
-        "description": "Taken from Unkommerzieller Marktplatz Zuerich Chat: " + msg.text,
+        "description": headings[chat_type] + msg.text,
         "expiration_date": expire_date,
         "external_url": None,  # No external URL in the messages
         "category": chat_type,
