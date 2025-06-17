@@ -17,7 +17,7 @@ from telegram_utils.data_preprocessing import (
 from telegram_utils.extract_location import get_address, get_postal
 from telegram_utils.utils import merge_rows_postprocessing, optimize_img_file_size
 
-chat_name_mapping = {131336840: "Test", 1001343503814: "Food", 1001280863188: "Goods", 1280863188: "Goods"}
+chat_name_mapping = {131336840: "Goods", 1001343503814: "Food", 1001280863188: "Goods", 1280863188: "Goods"}
 DOWNLOAD_IMAGES = True
 
 SUPPORT_MULTIPLE_IMAGES = False  # Whether to support multiple images in a single message
@@ -182,7 +182,7 @@ def get_online(api_config):
         async def handle_chat_events(event):
             msg = event.message
             if not check_msg_relevant(msg):
-                print("Skipping, not relevant")
+                print("Skipping, not relevant", msg.text)
             else:
                 # process the rest of the image
                 # TODO: support for merging messages from the same sender
@@ -208,7 +208,7 @@ def get_online(api_config):
                 # get coordinates
                 msg_as_df = pd.DataFrame([msg_dict])
                 msg_w_coords = create_geojson(msg_as_df)
-
+                
                 # add if we found a location
                 if len(msg_w_coords) > 0:
                     assert len(msg_w_coords) == 1, "Expected only one row in GeoDataFrame"
@@ -222,6 +222,8 @@ def get_online(api_config):
                         prev_msg = msg_dict
                     else:
                         print("Error inserting posting:", jsonify_result)
+                else:
+                    print("Location could not be determined", msg.text)
 
         client.run_until_disconnected()
 
