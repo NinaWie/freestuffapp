@@ -6,7 +6,7 @@ __pycache__/
 # project specific
 *.ipynb
 *.drawio
-geodata/
+raw_geodata/
 *.session
 db_login.json
 secrets.json
