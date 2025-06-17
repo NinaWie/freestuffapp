@@ -36,8 +36,16 @@ def get_used_ids():
     return ids_in_use
 
 
-def create_geojson(data, path="geodata"):
-    strasse_zu_coord = pd.read_csv(os.path.join(path, "strassen.csv"))
+# load streets and plz coordinates
+path="geodata"
+strasse_zu_coord = pd.read_csv(os.path.join(path, "strassen.csv"))
+
+
+# set index
+zurich_zip = gpd.read_file(os.path.join(path, "zurich.gpkg"))
+zurich_zip = zurich_zip.set_index("name").sort_index()
+
+def create_geojson(data):
 
     # Part 1: process the one with street names
     data_with_street = data[~pd.isna(data["address"])]
@@ -65,9 +73,7 @@ def create_geojson(data, path="geodata"):
     # convert to str
     # leftover["zip"] = leftover["zip"].astype(int).astype(str)
 
-    # set index
-    zurich_data = gpd.read_file(os.path.join(path, "zurich.gpkg"))
-    zurich_data = zurich_data.set_index("name").sort_index()
+    zurich_data = zurich_zip.copy()
     # remove invalid zip codes
     leftover = leftover[leftover["zip"].isin(zurich_data.index)]
     # compute number of required samples
@@ -76,7 +82,7 @@ def create_geojson(data, path="geodata"):
     zurich_data.dropna(inplace=True)
     # Sample points in polygons
     sampled = zurich_data.geometry.sample_points(zurich_data["num"].astype(int))
-    sampled = gpd.GeoDataFrame(sampled.explode()).reset_index().drop("level_1", axis=1)
+    sampled = gpd.GeoDataFrame(sampled.explode(index_parts=True)).reset_index().drop("level_1", axis=1)
     assert len(sampled) == len(leftover)
     # add as geometry
     leftover.sort_values("zip", inplace=True)
@@ -89,20 +95,22 @@ def create_geojson(data, path="geodata"):
     )
     data_with_geom = gpd.GeoDataFrame(data_with_geom, geometry="geometry")
 
-    # rename fields to match the pennyme style:
-    data_with_geom.rename(
-        {"Message": "name", "Date": "time_posted"}, axis=1, inplace=True
-    )
-    data_with_geom["external_url"] = "null"  # TODO: use telegram chat link?
-    data_with_geom["status"] = "available"
+    # # rename fields to match the pennyme style:
+    # data_with_geom.rename(
+    #     {"Message": "name", "Date": "time_posted"}, axis=1, inplace=True
+    # )
+    # data_with_geom["external_url"] = "null"  # TODO: use telegram chat link?
+    # data_with_geom["status"] = "available"
 
-    # format the time
-    def to_readable_datetime(x):
-        return x.strftime(TIME_FORMAT)
+    # # format the time
+    # def to_readable_datetime(x):
+    #     return x.strftime(TIME_FORMAT)
 
-    data_with_geom["time_posted"] = data_with_geom["time_posted"].apply(
-        to_readable_datetime
-    )
+    # data_with_geom["time_posted"] = data_with_geom["time_posted"].apply(
+    #     to_readable_datetime
+    # )
+    data_with_geom["name"] =  data_with_geom["message"].str[:50].str.replace("\n", " ")
+
 
     # combine zip and address
     def get_full_address(row):
@@ -116,16 +124,16 @@ def create_geojson(data, path="geodata"):
     data_with_geom["address"] = data_with_geom.apply(get_full_address, axis=1)
     data_with_geom = data_with_geom.drop(["zip"], axis=1)
 
-    # merge with existing data
-    data_with_geom = pd.concat([current_geojson, data_with_geom])
-    data_with_geom.drop_duplicates(inplace=True)  # TODO
+    # # merge with existing data
+    # data_with_geom = pd.concat([current_geojson, data_with_geom])
+    # data_with_geom.drop_duplicates(inplace=True)  # TODO
 
     # Save data
-    data_with_geom.to_file(os.path.join(OUT_PATH, "postings.json"), driver="GeoJSON")
+    # data_with_geom.to_file(os.path.join(OUT_PATH, "postings.json"), driver="GeoJSON")
 
     # Clean up images --> delete all that are not in the current json
-    clean_up_images(data_with_geom["photo_id"].values, IMG_OUT_PATH)
-
+    # clean_up_images(data_with_geom["photo_id"].values, IMG_OUT_PATH)
+    return data_with_geom
 
 def preprocess_streets(
     in_path=os.path.join("geodata", "raw", "strassennamen.json"),

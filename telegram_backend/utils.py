@@ -15,18 +15,18 @@ def merge_rows_postprocessing(data):
     After the whole collection of the data, merge the ones with same sender
     where only one of two messages has a picture and the other has a message
     """
-    data["sender_next"] = data["Sender"].shift(-1)
+    data["sender_next"] = data["sender"].shift(-1)
     data["photo_next"] = data["photo_id"].shift(-1)
-    data["message_next"] = data["Message"].shift(-1)
+    data["message_next"] = data["message"].shift(-1)
     # this one has a photo but not a message, next one has no photo
     # --> use next message
-    cond1 = (data["sender_next"] == data["Sender"]) & (
-        (pd.isna(data["photo_next"]) & pd.isna(data["Message"]))
+    cond1 = (data["sender_next"] == data["sender"]) & (
+        (pd.isna(data["photo_next"]) & pd.isna(data["message"]))
     )
-    data.loc[cond1, "Message"] = data.loc[cond1, "message_next"]
+    data.loc[cond1, "message"] = data.loc[cond1, "message_next"]
     # this one has a message but not a photo, next one has no message
     # --> use next photo
-    cond2 = (data["sender_next"] == data["Sender"]) & (
+    cond2 = (data["sender_next"] == data["sender"]) & (
         pd.isna(data["message_next"]) & pd.isna(data["photo_id"])
     )
     data.loc[cond2, "photo_id"] = data.loc[cond2, "photo_next"]
