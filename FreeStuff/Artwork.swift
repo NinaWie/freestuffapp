@@ -91,10 +91,22 @@ class Artwork: NSObject, MKAnnotation {
     //    }
     
     func parseDate(_ string: String) -> Date? {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd HH:mm"
-        formatter.timeZone = .current
-        return formatter.date(from: string.components(separatedBy: ".").first ?? "")
+        let formats = [
+                "yyyy-MM-dd HH:mm",
+                "yyyy-MM-dd HH:mm:ss"
+            ]
+
+            for format in formats {
+                let formatter = DateFormatter()
+                formatter.timeZone = .current
+                formatter.dateFormat = format
+
+                if let date = formatter.date(from: string.components(separatedBy: ".").first ?? "") {
+                    return date
+                }
+            }
+
+        return nil
     }
 
     func colorFromGreenToRed(hoursSince: Double) -> UIColor {
