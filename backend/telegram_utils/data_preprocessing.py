@@ -44,7 +44,7 @@ strasse_zu_coord = pd.read_csv(os.path.join("telegram_utils", "geodata", "strass
 zurich_zip = gpd.read_file(os.path.join("telegram_utils", "geodata", "zurich.gpkg"))
 zurich_zip = zurich_zip.set_index("name").sort_index()
 
-def create_geojson(data):
+def create_geojson(data, allow_only_zip=False):
 
     # Part 1: process the one with street names
     data_with_street = data[~pd.isna(data["address"])]
@@ -54,60 +54,51 @@ def create_geojson(data):
     data_with_street = data_with_street.merge(
         strasse_zu_coord, left_on="address_wo_number", right_on="name", how="left"
     )
-    data_with_street = gpd.GeoDataFrame(
+    data_with_geom = gpd.GeoDataFrame(
         data_with_street,
         geometry=gpd.points_from_xy(x=data_with_street["x"], y=data_with_street["y"]),
+        crs=4326
     )
+    data_with_geom = data_with_geom[~data_with_geom.geometry.is_empty]
 
-    # Part 2: Process the ones with zip but no (valid) street
-    plz_exists_but_no_stret = (~pd.isna(data["zip"])) & pd.isna(data["address"])
-    # leftover are the ones with plz but no sreets or the ones that we couldn't
-    # assign a street to but which have a plz
-    leftover = pd.concat(
-        [
-            data[plz_exists_but_no_stret],
-            data_with_street[pd.isna(data_with_street["x"])],
-        ]
-    ).dropna(subset=["zip"])
-    # convert to str
-    # leftover["zip"] = leftover["zip"].astype(int).astype(str)
+    if allow_only_zip:
+        # Part 2: Process the ones with zip but no (valid) street
+        plz_exists_but_no_stret = (~pd.isna(data["zip"])) & pd.isna(data["address"])
+        # leftover are the ones with plz but no sreets or the ones that we couldn't
+        # assign a street to but which have a plz
+        leftover = pd.concat(
+            [
+                data[plz_exists_but_no_stret],
+                data_with_street[pd.isna(data_with_street["x"])],
+            ]
+        ).dropna(subset=["zip"])
+        # convert to str
+        # leftover["zip"] = leftover["zip"].astype(int).astype(str)
 
-    zurich_data = zurich_zip.copy()
-    # remove invalid zip codes
-    leftover = leftover[leftover["zip"].isin(zurich_data.index)]
-    # compute number of required samples
-    required_samples_per_zip = leftover.groupby("zip")["zip"].count()
-    zurich_data["num"] = required_samples_per_zip
-    zurich_data.dropna(inplace=True)
-    # Sample points in polygons
-    sampled = zurich_data.geometry.sample_points(zurich_data["num"].astype(int))
-    sampled = gpd.GeoDataFrame(sampled.explode(index_parts=True)).reset_index().drop("level_1", axis=1)
-    assert len(sampled) == len(leftover)
-    # add as geometry
-    leftover.sort_values("zip", inplace=True)
-    leftover["geometry"] = sampled["sampled_points"].values
+        zurich_data = zurich_zip.copy()
+        # remove invalid zip codes
+        leftover = leftover[leftover["zip"].isin(zurich_data.index)]
+        # compute number of required samples
+        required_samples_per_zip = leftover.groupby("zip")["zip"].count()
+        zurich_data["num"] = required_samples_per_zip
+        zurich_data.dropna(inplace=True)
+        # Sample points in polygons
+        sampled = zurich_data.geometry.sample_points(zurich_data["num"].astype(int))
+        sampled = gpd.GeoDataFrame(sampled.explode(index_parts=True)).reset_index().drop("level_1", axis=1)
+        assert len(sampled) == len(leftover)
+        # add as geometry
+        leftover.sort_values("zip", inplace=True)
+        leftover["geometry"] = sampled["sampled_points"].values
 
-    # final data: the ones with plz (leftover) and the ones where we could
-    # find a street
-    data_with_geom = pd.concat([leftover, data_with_street.dropna(subset=["x"])]).drop(
-        ["x", "y", "name", "address_wo_number"], axis=1
-    )
+        # final data: the ones with plz (leftover) and the ones where we could
+        # find a street
+        data_with_geom = pd.concat([leftover, data_with_geom.dropna(subset=["x"])])
+
+    data_with_geom.drop(
+            ["x", "y", "name", "address_wo_number"], axis=1, inplace=True
+        )
     data_with_geom = gpd.GeoDataFrame(data_with_geom, geometry="geometry")
 
-    # # rename fields to match the pennyme style:
-    # data_with_geom.rename(
-    #     {"Message": "name", "Date": "time_posted"}, axis=1, inplace=True
-    # )
-    # data_with_geom["external_url"] = "null"  # TODO: use telegram chat link?
-    # data_with_geom["status"] = "available"
-
-    # # format the time
-    # def to_readable_datetime(x):
-    #     return x.strftime(TIME_FORMAT)
-
-    # data_with_geom["time_posted"] = data_with_geom["time_posted"].apply(
-    #     to_readable_datetime
-    # )
     data_with_geom["name"] =  data_with_geom["message"].str[:50].str.replace("\n", " ")
 
 
@@ -123,15 +114,6 @@ def create_geojson(data):
     data_with_geom["address"] = data_with_geom.apply(get_full_address, axis=1)
     data_with_geom = data_with_geom.drop(["zip"], axis=1)
 
-    # # merge with existing data
-    # data_with_geom = pd.concat([current_geojson, data_with_geom])
-    # data_with_geom.drop_duplicates(inplace=True)  # TODO
-
-    # Save data
-    # data_with_geom.to_file(os.path.join(OUT_PATH, "postings.json"), driver="GeoJSON")
-
-    # Clean up images --> delete all that are not in the current json
-    # clean_up_images(data_with_geom["photo_id"].values, IMG_OUT_PATH)
     return data_with_geom
 
 def preprocess_streets(

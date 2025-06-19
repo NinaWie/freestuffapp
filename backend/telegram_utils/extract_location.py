@@ -29,8 +29,8 @@ def get_address(message):
         ("strasse" in message.lower())
         or ("straße" in message.lower())
         or ("gasse" in message.lower())
-        or ("weg" in message.lower())
-        or ("platz" in message.lower())
+        or ("weg " in message.lower())
+        or ("platz " in message.lower())
     ):
         return pd.NA
     # clean

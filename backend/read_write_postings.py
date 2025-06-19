@@ -3,6 +3,7 @@ from shapely.geometry import Point
 from datetime import datetime, timedelta
 from PIL import Image, ImageOps
 import numpy as np
+import pandas as pd
 
 # database stuff
 import psycopg2
@@ -32,7 +33,7 @@ Base = declarative_base()
 
 
 class Postings(Base):
-    __tablename__ = "posts"
+    __tablename__ = "posts" # for debugging: telegram_postings
 
     id = Column(Integer, primary_key=True)
     name = Column(String)
@@ -91,6 +92,8 @@ def insert_posting(data, nr_photos: int = 1):
 
         if "time_posted" not in data:
             data["time_posted"] = datetime.now()
+        if isinstance(data["time_posted"], pd.Timestamp):
+            data["time_posted"] = data["time_posted"].to_pydatetime()
 
         new_posting = Postings(
             name=data.get("name"),

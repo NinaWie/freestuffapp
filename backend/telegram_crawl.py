@@ -16,12 +16,30 @@ from telegram_utils.data_preprocessing import (
 )
 from telegram_utils.extract_location import get_address, get_postal
 from telegram_utils.utils import merge_rows_postprocessing, optimize_img_file_size
+from app import post_to_slack
 
-chat_name_mapping = {131336840: "Goods", 1001343503814: "Food", 1001280863188: "Goods", 1280863188: "Goods"}
+chat_name_mapping = {
+        131336840: "Goods", # Test chat
+        1001343503814: "Food", # food id
+        1001280863188: "Goods", # old id for unkommerzieller
+        1280863188: "Goods", # new id for unkommerzieller
+        -1001343503814: "Food", # msg.chat_id for foodwaste
+        -1001280863188: "Goods" # msg.chat_id for unkommerzieller
+        }
+chat_url_mapping = {
+    1001280863188: "https://t.me/+TFhr1DGsGxWWcDMA",
+    -1001280863188: "https://t.me/+TFhr1DGsGxWWcDMA",
+    1280863188: "https://t.me/+TFhr1DGsGxWWcDMA",
+    1001343503814: "https://t.me/joinchat/LRqD-FAUPcYj8DLSoSaHjw",
+    -1001343503814: "https://t.me/joinchat/LRqD-FAUPcYj8DLSoSaHjw"
+}
+    
 DOWNLOAD_IMAGES = True
+DEBUGGING = False
 
 SUPPORT_MULTIPLE_IMAGES = False  # Whether to support multiple images in a single message
 SUPPORT_SENDER_MERGE = False  # Whether to merge messages from the same sender
+INCLUDE_ONLY_PLZ = False
 
 def check_msg_relevant(msg):
     return msg.text is None or not (
@@ -86,14 +104,13 @@ def handle_incoming_message(msg, last_msg, chat_nr):
 
     expire_date = (msg.date + pd.Timedelta(days=3)).strftime("%d. %b %Y")
 
-
     # add the message and metadata
     msg_dict = {
         "sender": sender_name,
         "message": msg.text,
         "description": headings[chat_type] + msg.text,
         "expiration_date": expire_date,
-        "external_url": None,  # No external URL in the messages
+        "external_url": chat_url_mapping.get(chat_nr, None),  # No external URL in the messages
         "category": chat_type,
         "time_posted": msg.date,
         "zip": get_postal(msg.text),
@@ -150,7 +167,7 @@ async def get_history(api_config, download_images=DOWNLOAD_IMAGES):
 
                 # get coordinates
                 msg_as_df = pd.DataFrame([msg_dict])
-                msg_w_coords = create_geojson(msg_as_df)
+                msg_w_coords = create_geojson(msg_as_df, allow_only_zip=INCLUDE_ONLY_PLZ)
 
                 # add if we found a location
                 if len(msg_w_coords) > 0:
@@ -163,7 +180,9 @@ async def get_history(api_config, download_images=DOWNLOAD_IMAGES):
                     )
                     if error_code == 200:
                         print("Successfully inserted posting with ID:", new_post_id)
-                        await download_img(msg, new_post_id)
+                        if not DEBUGGING:
+                            await download_img(msg, new_post_id)
+                        post_to_slack(f"New telegram post added: {msg_w_coords.iloc[0].to_dict()}")
                     else:
                         print("Error inserting posting:", jsonify_result)
 
@@ -211,12 +230,12 @@ def get_online(api_config):
 
                 # get coordinates
                 msg_as_df = pd.DataFrame([msg_dict])
-                msg_w_coords = create_geojson(msg_as_df)
+                msg_w_coords = create_geojson(msg_as_df, allow_only_zip=INCLUDE_ONLY_PLZ)
                 
                 # add if we found a location
                 if len(msg_w_coords) > 0:
                     assert len(msg_w_coords) == 1, "Expected only one row in GeoDataFrame"
-                    has_photo= msg.photo is not None # TODO: handle multiple photos
+                    has_photo = msg.photo is not None # TODO: handle multiple photos
                     jsonify_result, error_code, new_post_id = insert_posting(
                         msg_w_coords.iloc[0].to_dict(), nr_photos=int(has_photo)
                     )
@@ -224,6 +243,7 @@ def get_online(api_config):
                         print("Successfully inserted posting with ID:", new_post_id)
                         await download_img(msg, new_post_id)
                         prev_msg = msg_dict
+                        post_to_slack(f"New telegram post added: {msg_w_coords.iloc[0].to_dict()}")
                     else:
                         print("Error inserting posting:", jsonify_result)
                 else:
@@ -235,5 +255,7 @@ def get_online(api_config):
 if __name__ == "__main__":
     with open("telegram_utils/api_config.json", "r") as infile:
         api_config = json.load(infile)
-    # asyncio.run(get_history(api_config)) # for testing
-    get_online(api_config)
+    if DEBUGGING:
+        asyncio.run(get_history(api_config)) # for testing
+    else:
+        get_online(api_config)
