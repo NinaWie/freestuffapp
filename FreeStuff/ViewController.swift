@@ -394,7 +394,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
     // To load machine locations from JSON
     @available(iOS 13.0, *)
     func loadPins(checkRegionChange: Bool = true) {
-        print("load pins")
         // get region
         let region = PennyMap.region
         let center = region.center
@@ -421,6 +420,15 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
         // get userSettings
         let userSettings = UserDefaults.standard
+        // for first time usage only:
+        if userSettings.object(forKey: "showGoodsSwitch") == nil {
+            userSettings.set(true, forKey: "showGoodsSwitch")
+            userSettings.set(true, forKey: "showFoodSwitch")
+            userSettings.set("All", forKey: "selectedGoodsCategory")
+            userSettings.set("All", forKey: "selectedFoodCategory")
+            userSettings.set(maxDaysToExpiration, forKey: "timePostedMax")
+            userSettings.set(true, forKey: "showPermanentSwitch")
+        }
         let showGoods = userSettings.bool(forKey: "showGoodsSwitch")
         let showFood = userSettings.bool(forKey: "showFoodSwitch")
         let goodsSubcategory = userSettings.string(forKey: "selectedGoodsCategory") ?? "All"
