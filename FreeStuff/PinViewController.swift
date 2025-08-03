@@ -91,7 +91,13 @@ class PinViewController: UITableViewController, UIImagePickerControllerDelegate,
         titleLabel.textAlignment = NSTextAlignment.center
         titleLabel.text = self.pinData.title!
         addressLabel.numberOfLines = 0
-        addressLabel.text = self.pinData.postDescription
+        var desc = self.pinData.postDescription
+        if let external_url =  self.pinData.link {
+            if external_url.count > 1 {
+                desc += "\nMore info: \(external_url)"
+            }
+        }
+        addressLabel.text = desc
         
         // add time
         timeLabel.numberOfLines = 0
