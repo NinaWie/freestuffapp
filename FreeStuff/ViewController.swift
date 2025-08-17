@@ -13,6 +13,8 @@ let locationManager = CLLocationManager()
 let LAT_DEGREE_TO_KM = 110.948
 let closeNotifyDist = 0.3 // in km, send "you are very close" at this distance
 var radius = 20.0
+let MAX_AREA_DEGREES: Double = 1.0
+
 
 @available(iOS 13.0, *)
 class ViewController: UIViewController, UITextFieldDelegate {
@@ -404,6 +406,11 @@ class ViewController: UIViewController, UITextFieldDelegate {
         let swLat = center.latitude - span.latitudeDelta / 2
         let swLng = center.longitude - span.longitudeDelta / 2
         
+        let area = abs(neLat - swLat) * abs(neLng - swLng)
+        if area > MAX_AREA_DEGREES {
+            showAlert(title: "Region Too Large", message: "Please zoom in to a smaller area.")
+        }
+        
         // Check if the current view is inside the last fetched bounds
         if checkRegionChange && isNewRegionInsideLastBounds(neLat: neLat, neLng: neLng, swLat: swLat, swLng: swLng) {
             return
@@ -414,9 +421,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
             PennyMap.removeAnnotations(artworks)
             artworks = []
         }
-
-        // Store last bounds to prevent redundant calls later
-        lastFetchedBounds = (neLat: neLat, neLng: neLng, swLat: swLat, swLng: swLng)
 
         // get userSettings
         let userSettings = UserDefaults.standard
@@ -455,12 +459,16 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
         let task = URLSession.shared.dataTask(with: jsonUrl) { data, response, error in
             if let error = error {
-                print("Error in loading updates from server:", error)
+                DispatchQueue.main.async {
+                    self.showAlert(title: "Network Error", message: error.localizedDescription)
+                }
                 return
             }
 
             guard let data = data else {
-                print("No data received")
+                DispatchQueue.main.async {
+                    self.showAlert(title: "Network Error", message: "No data could be loaded")
+                }
                 return
             }
 
@@ -469,6 +477,9 @@ class ViewController: UIViewController, UITextFieldDelegate {
                     .decode(data)
                     .compactMap { $0 as? MKGeoJSONFeature }
 
+                // Store last bounds to prevent redundant calls later
+                self.lastFetchedBounds = (neLat: neLat, neLng: neLng, swLat: swLat, swLng: swLng)
+                
                 let pinsFromServer = serverJsonAsMap.compactMap(Artwork.init)
 
                 // Update on main thread
@@ -485,6 +496,13 @@ class ViewController: UIViewController, UITextFieldDelegate {
             }
         }
         task.resume()
+    }
+    
+    // Helper function to show an alert
+    func showAlert(title: String, message: String) {
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
     }
 
     func isNewRegionInsideLastBounds(neLat: Double, neLng: Double, swLat: Double, swLng: Double) -> Bool {
