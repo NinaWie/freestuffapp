@@ -27,7 +27,7 @@ class VersionManager {
     
     func showVersionInfoAlertIfNeeded() {
         if shouldShowVersionInfo() {
-            let alert = UIAlertController(title: "FreeStuff v\(currentVersion ?? "")", message: "Welcome to our new app!", preferredStyle: .alert)
+            let alert = UIAlertController(title: "FreeStuff v\(currentVersion ?? "")", message: "Welcome to FreeStuff — discover and share free finds in your neighborhood!", preferredStyle: .alert)
             alert.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
             UIApplication.shared.windows.first?.rootViewController?.present(alert, animated: true, completion: nil)
         }
