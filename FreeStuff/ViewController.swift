@@ -2,6 +2,9 @@
 //  ViewController.swift
 //  FreeStuff
 //
+//  Created by Nina Wiedemann on 25.07.23.
+//  Copyright © 2025  Nina Wiedemann. All rights reserved.
+
 
 import UIKit
 import MapKit
@@ -12,7 +15,7 @@ import SwiftUI
 let locationManager = CLLocationManager()
 let LAT_DEGREE_TO_KM = 110.948
 let closeNotifyDist = 0.3 // in km, send "you are very close" at this distance
-var radius = 20.0
+var radius: Double = Double(UserDefaults.standard.float(forKey: "radius"))
 let MAX_AREA_DEGREES: Double = 1.0
 
 
@@ -70,6 +73,11 @@ class ViewController: UIViewController, UITextFieldDelegate {
         // Do any additional setup after loading the view, typically from a nib.
         artworks = Artwork.artworks()
 
+        // initializing radius variable
+        if radius == 0.0 {
+            radius = 2.0
+            UserDefaults.standard.set(radius, forKey: "radius")
+        }
         
         // Set up search bar
         searchController.searchResultsUpdater = self
@@ -629,6 +637,10 @@ extension ViewController: CLLocationManagerDelegate {
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations : [CLLocation]) {
+        if artworks.count == 0 {
+            return
+        }
+
         // Update position on map
         guard let location = locations.last else {return}
 
@@ -640,13 +652,13 @@ extension ViewController: CLLocationManagerDelegate {
         // check whether we have found any new machines
         let doPush = determinePush(currentNearby: foundIndices)
         if doPush && (pennyCounter > 0){
-            let notificationString = "There are \(pennyCounter) machines nearby. The closest is \(round(minDist * 10)/10)km away \(artworks[closestID].title!)"
+            let notificationString = "There are \(pennyCounter) free items nearby. The closest is \(round(minDist * 10)/10)km away (title: \(artworks[closestID].title!))"
             pushNotification(notificationString: notificationString)
         }
         // push with other notification if one is really close
         // Do this only once (variable sendVeryCloseNotification)
         if pennyCounter > 0 && minDist < closeNotifyDist && closestID != lastClosestID{
-            let notificationString = "You are very close to a Penny! It is only \(round(minDist * 10)/10)km away \(artworks[closestID].title!)"
+            let notificationString = "You are very close to some free stuff! It is only \(round(minDist * 10)/10)km away (title: \(artworks[closestID].title!))"
             pushNotification(notificationString: notificationString)
             // this is to prevent that the "nearby" notification is sent only once (per location)
             lastClosestID = closestID
@@ -736,7 +748,7 @@ extension ViewController: CLLocationManagerDelegate {
             }
 
             // Check whether the pin is in the square
-            if minLon < lon && lon < maxLon && artwork.status == "unvisited"{
+            if minLon < lon && lon < maxLon && artwork.status == "temporary"{
                 let distance = GeoUtils.haversineDistance(
                     lat1: curLat,
                     lon1: curLon,

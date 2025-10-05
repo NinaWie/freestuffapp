@@ -42,14 +42,16 @@ class SettingsViewController: UITableViewController {
         pushSwitch.isOn =  UserDefaults.standard.bool(forKey: "switchState")
         pushSwitch.addTarget(self, action: #selector(setPushNotifications), for: .valueChanged)
         
+        // initialize radius user default for the first time:
+        let user_settings = UserDefaults.standard
+        
         // slider
-        radiusSlider.value =  UserDefaults.standard.float(forKey: "radius")
+        radiusSlider.value = user_settings.float(forKey: "radius")
         radius = Double(radiusSlider.value)
         radiusSlider.addTarget(self, action: #selector(sliderValueDidChange(_:)), for: .valueChanged)
         radiusSlider.isContinuous = false
         
         // cluster switch
-        let user_settings = UserDefaults.standard
         clusterPinsSwitch.isOn = user_settings.value(forKey: "clusterPinSwitch") as? Bool ?? default_switches["clusterPinSwitch"] as! Bool
         clusterPinsSwitch.addTarget(self, action: #selector(clusterPins), for: .valueChanged)
     }
