@@ -15,7 +15,7 @@ import SwiftUI
 let locationManager = CLLocationManager()
 let LAT_DEGREE_TO_KM = 110.948
 let closeNotifyDist = 0.3 // in km, send "you are very close" at this distance
-var radius: Double = Double(UserDefaults.standard.float(forKey: "radius"))
+//var radius: Double = Double(UserDefaults.standard.float(forKey: "radius"))
 let MAX_AREA_DEGREES: Double = 1.0
 
 
@@ -73,11 +73,11 @@ class ViewController: UIViewController, UITextFieldDelegate {
         // Do any additional setup after loading the view, typically from a nib.
         artworks = Artwork.artworks()
 
-        // initializing radius variable
-        if radius == 0.0 {
-            radius = 2.0
-            UserDefaults.standard.set(radius, forKey: "radius")
-        }
+//        // initializing radius variable for push notification
+//        if radius == 0.0 {
+//            radius = 2.0
+//            UserDefaults.standard.set(radius, forKey: "radius")
+//        }
         
         // Set up search bar
         searchController.searchResultsUpdater = self
@@ -624,161 +624,6 @@ extension ViewController: MKMapViewDelegate {
 }
 
 
-
-
-// Global handling of GPS  localization issues
-@available(iOS 13.0, *)
-extension ViewController: CLLocationManagerDelegate {
-    // location manager fail
-    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-       manager.stopMonitoringSignificantLocationChanges()
-        print("Stopped monitoring because of error", error)
-        return
-    }
-
-    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations : [CLLocation]) {
-        if artworks.count == 0 {
-            return
-        }
-
-        // Update position on map
-        guard let location = locations.last else {return}
-
-        // Get closest pins
-        let lonCurrent = location.coordinate.longitude // 168.823 // 8.5490 // here are we!
-        let latCurrent =  location.coordinate.latitude // -44.9408  // 47.3899
-        let (pennyCounter, minDist, closestID, foundIndices) = getCandidates(artworks: artworks, curLat: latCurrent, curLon: lonCurrent, radius:radius)
-//        print("Found", pennyCounter, "machines, the closest is", minDist, closestID, artworks[closestID].title)
-        // check whether we have found any new machines
-        let doPush = determinePush(currentNearby: foundIndices)
-        if doPush && (pennyCounter > 0){
-            let notificationString = "There are \(pennyCounter) free items nearby. The closest is \(round(minDist * 10)/10)km away (title: \(artworks[closestID].title!))"
-            pushNotification(notificationString: notificationString)
-        }
-        // push with other notification if one is really close
-        // Do this only once (variable sendVeryCloseNotification)
-        if pennyCounter > 0 && minDist < closeNotifyDist && closestID != lastClosestID{
-            let notificationString = "You are very close to some free stuff! It is only \(round(minDist * 10)/10)km away (title: \(artworks[closestID].title!))"
-            pushNotification(notificationString: notificationString)
-            // this is to prevent that the "nearby" notification is sent only once (per location)
-            lastClosestID = closestID
-        }
-    }
-    
-    // Send user a local notification if they have the app running in the bg
-    func pushNotification(notificationString: String) {
-        // print("SENT PUSH", notificationString)
-        let notification = UILocalNotification()
-        notification.alertAction = "Check FreeStuff"
-        notification.alertBody = notificationString
-        notification.fireDate = Date(timeIntervalSinceNow: 1)
-        UIApplication.shared.scheduleLocalNotification(notification)
-    }
-    
-    func determinePush(currentNearby:Array<Int>) -> Bool {
-        // Decide whether a push notification is sent to the user.
-        // If any of the found nearby machines has not been nearby at previous lookup, send a notification.
-        var doPush = false
-        for i in currentNearby {
-            if !pastNearby.contains(i) {
-                doPush = true
-                break
-            }
-        }
-        self.pastNearby = currentNearby
-        return doPush
-    }
-
-    // Function to measure distances to pins
-    func getCoordinateRange(lat: Double, long: Double, radius: Double) -> (Double, Double, Double, Double) {
-        
-        // Determine the range of latitude/longitude values that we have to search
-        let latDegreeChange = radius / LAT_DEGREE_TO_KM
-        let longDegreeChange = radius / (LAT_DEGREE_TO_KM * cos(lat*(Double.pi/180)))
-        let minLat = lat - latDegreeChange
-        let maxLat = lat + latDegreeChange
-        let minLong = long - longDegreeChange
-        let maxLong = long + longDegreeChange
-        
-        return (minLat, maxLat, minLong, maxLong)
-    }
-    
-    func searchLatIndex(artworks: [Artwork], minLat: Double, curIndex: Int, totalIndex: Int) -> Int{
-        let curLength = artworks.count
-        if curLength == 1{
-            return totalIndex
-        }
-        if artworks[curIndex].coordinate.latitude > minLat{
-            let nextIndex = Int(curIndex/2)
-            return searchLatIndex(artworks: Array(artworks[0..<curIndex]), minLat: minLat, curIndex: nextIndex, totalIndex: totalIndex - curIndex + nextIndex)
-        }
-        else if artworks[curIndex].coordinate.latitude < minLat{
-            let nextMiddle = (Double(curLength-curIndex)/2.0)
-            let nextIndex = Int(ceil(nextMiddle))
-            return searchLatIndex(artworks: Array(artworks[curIndex..<curLength]), minLat: minLat, curIndex: nextIndex, totalIndex: nextIndex + totalIndex)
-        }
-        else{
-            return totalIndex
-        }
-    }
-
-    func getCandidates(artworks: [Artwork], curLat:Double, curLon: Double, radius: Double) -> (Int, Double, Int, [Int]){
-        let (minLat, maxLat, minLon, maxLon) = getCoordinateRange(lat: curLat, long: curLon, radius: radius)
-//        print("min and max", (minLat, maxLat, minLon, maxLon))
-        
-        let guess = Int(artworks.count/2)
-        let startIndex = searchLatIndex(artworks: artworks, minLat: minLat, curIndex: guess, totalIndex: guess)
-
-        // helpers
-        var lat: Double
-        var lon: Double
-        var index = startIndex
-        // returns
-        var minDist = radius
-        var pennyCounter = 0
-        var closestID = 0
-        var foundIndices: [Int] = []
-        
-        // iterate over artworks
-        for artwork in artworks[startIndex..<artworks.count] {
-            lat = artwork.coordinate.latitude
-            lon = artwork.coordinate.longitude
-            if lat > maxLat {
-                break
-            }
-
-            // Check whether the pin is in the square
-            if minLon < lon && lon < maxLon && artwork.status == "temporary"{
-                let distance = GeoUtils.haversineDistance(
-                    lat1: curLat,
-                    lon1: curLon,
-                    lat2: lat,
-                    lon2: lon
-                )
-                let distInKm = distance/1000
-                // check whether in circle
-                if distInKm < radius{
-                    pennyCounter += 1
-                    if distInKm < minDist{
-                        minDist = distInKm
-                        closestID = index
-                    }
-                    foundIndices.append(index)
-                }
-            }
-            index += 1
-
-        }
-        return (pennyCounter, minDist, closestID, foundIndices)
-    }
-    
-    func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
-        // called if authorization has changed
-        checkLocationAuthorization()
-    }
-}
-
-
 // Searchbar updating
 @available(iOS 13.0, *)
 extension ViewController: UISearchResultsUpdating {
@@ -881,5 +726,14 @@ extension UISearchBar {
                 activityIndicator?.removeFromSuperview()
             }
         }
+    }
+}
+
+// Global handling of GPS  localization issues
+@available(iOS 13.0, *)
+extension ViewController: CLLocationManagerDelegate {
+    func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
+        // called if authorization has changed
+        checkLocationAuthorization()
     }
 }
