@@ -1,9 +1,11 @@
 //
 //  ImagePickerHelper.swift
-//  PennyMe
+//  FreeStuff
 //
-//  Created by Nina Wiedemann on 16.03.25
+//  Created by Nina Wiedemann on 25.07.23.
+//  Copyright © 2025  Nina Wiedemann. All rights reserved.
 //
+
 
 import Foundation
 import SwiftUI

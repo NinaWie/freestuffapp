@@ -31,13 +31,13 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>The location is needed to send push notification when a penny machine is nearby</string>
+	<string>The location is needed to send push notification when free stuff is available nearby</string>
 	<key>NSLocationAlwaysUsageDescription</key>
-	<string>The location is needed to send push notification when a penny machine is nearby</string>
+	<string>The location is needed to send push notification when free stuff is available nearby</string>
 	<key>NSLocationUsageDescription</key>
-	<string>The location is needed to display penny machines around you.</string>
+	<string>Enable location to see free items available in your area.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>The location is needed to display penny machines around you.</string>
+	<string>Enable location to see free items available in your area.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>
@@ -64,9 +64,9 @@
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>NSAppTransportSecurity</key>
-    <dict>
-        <key>NSAllowsArbitraryLoads</key>
-        <true/>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
 	</dict>
 </dict>
 </plist>

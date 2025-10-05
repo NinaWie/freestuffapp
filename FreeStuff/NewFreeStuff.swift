@@ -1,9 +1,9 @@
 //
 //  NewMachineRequest.swift
-//  PennyMe
+//  FreeStuff
 //
 //  Created by Nina Wiedemann on 25.07.23.
-//  Copyright © 2023 Jannis Born. All rights reserved.
+//  Copyright © 2025  Nina Wiedemann. All rights reserved.
 //
 
 import Foundation

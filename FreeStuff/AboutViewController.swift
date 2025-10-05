@@ -19,7 +19,7 @@ class AboutViewController: UIViewController {
         self.label.contentMode = .scaleToFill
         self.label.numberOfLines = 30
 
-        self.label.text = "Let's stop trashing perfectly good stuff! This app helps you to find free things around you, like furniture, clothes, or food.\n\nThis is Free Stuff v\(currentVersion ?? "")."
+        self.label.text = "Let's stop trashing perfectly good stuff! This app helps you to find free things around you, like furniture, clothes, or food.\n\nThis is Free Stuff v\(currentVersion ?? "").\n\n©Nina Wiedemann (2025)"
     }
 }
 
