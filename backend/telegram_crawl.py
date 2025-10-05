@@ -43,7 +43,7 @@ INCLUDE_ONLY_PLZ = False
 
 def check_msg_relevant(msg):
     return msg.text is None or not (
-        "suche" in msg.text.lower() or "kein kaufen/verkaufen hier" in msg.text.lower()
+        "suche" in msg.text.lower() or "kein kaufen/verkaufen hier" in msg.text.lower() or "?" in msg.text
     )
 
 headings = {
