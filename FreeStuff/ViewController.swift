@@ -36,7 +36,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     
     @IBOutlet weak var settingsbutton: UIButton!
     
-    let regionInMeters: Double = 10000
+    let regionInMeters: Double = 20000
     // Array for annotation database
     var artworks: [Artwork] = []
     var pinIdDict : [String:Int] = [:]
@@ -253,7 +253,12 @@ class ViewController: UIViewController, UITextFieldDelegate {
     
     @objc func postNewStuff(){
         if #available(iOS 14.0, *) {
-            let coordinate = FreeStuff.locationManager.location!.coordinate
+            let coordinate: CLLocationCoordinate2D
+            if let userLocation = FreeStuff.locationManager.location?.coordinate {
+                coordinate = userLocation
+            } else {
+                coordinate = self.PennyMap.centerCoordinate
+            }
             let view = NewMachineFormView(
                 coordinate: coordinate,
                 onPostComplete: {
@@ -312,7 +317,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
         switch CLLocationManager.authorizationStatus(){
         case .authorizedWhenInUse:
             PennyMap.showsUserLocation = true
-            centerViewOnUserLocation()
             //locationManager.startUpdatingLocation()
             break
         case .denied:
@@ -326,9 +330,9 @@ class ViewController: UIViewController, UITextFieldDelegate {
             break
         case .authorizedAlways:
             PennyMap.showsUserLocation = true
-            centerViewOnUserLocation()
             break
         }
+        centerViewOnUserLocation()
     }
     
     // Set the initial map location

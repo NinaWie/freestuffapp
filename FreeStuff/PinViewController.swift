@@ -257,7 +257,24 @@ class PinViewController: UITableViewController, UIImagePickerControllerDelegate,
     
     @objc func deletePost(){
         // check distance between user and item location
-        let coords = locationManager.location!.coordinate
+        // Check if location is available
+        if self.pinData.status == "permanent" {
+            let alert = UIAlertController(title: "Cannot pick up permanent post.", message: "If you are sure that this post does not exist, please use the red button.", preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            present(alert, animated: true)
+        }
+        
+        guard let userLocation = locationManager.location else {
+            let alert = UIAlertController(
+                title: "Location Unavailable",
+                message: "You need to enable location services to delete a post.",
+                preferredStyle: .alert
+            )
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            self.present(alert, animated: true, completion: nil)
+            return
+        }
+        let coords = userLocation.coordinate
         let distance = GeoUtils.haversineDistance(
             lat1: coords.latitude,
             lon1: coords.longitude,
