@@ -337,9 +337,11 @@ struct NewMachineFormView: View {
     }
     
     private func finishLoading(message: String) {
-        displayResponse = message
-        showAlert = true
-        isLoading = false
+        DispatchQueue.main.async {
+            displayResponse = message
+            showAlert = true
+            isLoading = false
+        }
     }
     
     // Function to handle the submission of the request
@@ -369,7 +371,7 @@ struct NewMachineFormView: View {
             URLQueryItem(name: "lat_coord", value: "\(selectedLocation.latitude)"),
         ]
         urlComponents.percentEncodedQuery = urlComponents.percentEncodedQuery?.replacingOccurrences(of: "+", with: "%2B")
-        var request = URLRequest(url: urlComponents.url!)
+        var request = URLRequest(url: urlComponents.url!, timeoutInterval: 30)
         request.httpMethod = "POST"
                 
         // upload image and make request
@@ -392,7 +394,7 @@ struct NewMachineFormView: View {
                 compressedData = image.jpegData(compressionQuality: quality)
             }
             guard let imageData = compressedData else {
-                print("Failed to compress image under size limit")
+                finishLoading(message: "Failed to load and compress image. Please try again.")
                 return
             }
 
@@ -411,7 +413,7 @@ struct NewMachineFormView: View {
         
         // Create a URLSessionDataTask to send the request
         let task = URLSession.shared.dataTask(with: request) { (data, response, error) in
-            if let error = error {
+            if error != nil {
                 finishLoading(message: "Something went wrong. Please check your internet connection and try again")
                 return
             }

@@ -577,7 +577,9 @@ class PinViewController: UITableViewController, UIImagePickerControllerDelegate,
                 showAlert(title: "Success", message: "Upload successful! Please reopen the post to see your comment.")
             }
             else {
-                showAlert(title: "Success", message: "Post deleted successfully")
+                showAlert(title: "Success", message: "Post deleted successfully"){
+                    self.navigateBackAfterDelete()
+                }
             }
         } else {
             var errorMessage = "An error occurred"
@@ -599,14 +601,22 @@ class PinViewController: UITableViewController, UIImagePickerControllerDelegate,
         }
     }
     
-    
-    private func showAlert(title: String, message: String) {
-        let alertController = UIAlertController(title: title, message: message, preferredStyle: .alert)
-        let okAction = UIAlertAction(title: "OK", style: .default, handler: nil)
-        alertController.addAction(okAction)
-        present(alertController, animated: true, completion: nil)
+    func navigateBackAfterDelete() {
+        self.navigationController?.popViewController(animated: true)
     }
+
     
+    
+    func showAlert(title: String, message: String, completion: (() -> Void)? = nil) {
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+
+        alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in
+            completion?()
+        })
+
+        present(alert, animated: true)
+    }
+
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         if (segue.identifier == "bigImage") {
             let destinationViewController = segue.destination as! ZoomViewController
