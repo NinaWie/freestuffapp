@@ -353,7 +353,9 @@ struct NewMachineFormView: View {
         }
         //  format expiration date
         let formatter = DateFormatter()
-        formatter.dateStyle = .medium  // You can use .short, .long, or custom
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateStyle = .medium
+        formatter.dateFormat = "yyyy-MM-dd"
         var expirationDateString = formatter.string(from: expirationDate)
         if isPermanent {
             expirationDateString = ""

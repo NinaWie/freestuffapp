@@ -16,6 +16,7 @@ from geoalchemy2.functions import ST_MakeEnvelope
 
 MAX_RESULTS = 200
 
+
 def init_session():
     """Initialize a database session."""
     DB_FILE = "db_login.json"
@@ -34,7 +35,7 @@ Base = declarative_base()
 
 
 class Postings(Base):
-    __tablename__ = "posts" # for debugging: telegram_postings
+    __tablename__ = "posts"  # for debugging: telegram_postings
 
     id = Column(Integer, primary_key=True)
     name = Column(String)
@@ -85,7 +86,7 @@ def insert_posting(data, nr_photos: int = 1):
         # prepare expiration date
         date_string = data.get("expiration_date", "")
         if len(date_string) > 0:
-            expiration_date = datetime.strptime(date_string, "%d. %b %Y").date()
+            expiration_date = datetime.strptime(date_string, "yyyy-MM-dd").date()
             status = "temporary"
         else:
             expiration_date = None
@@ -177,7 +178,7 @@ def load_filter_postings(request_args):
 
         postings = query.all()
 
-        print(f"Loaded {len(postings)} posts")
+        # print(f"Loaded {len(postings)} posts")
 
         return postings
     finally:
