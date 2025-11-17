@@ -86,7 +86,7 @@ def insert_posting(data, nr_photos: int = 1):
         # prepare expiration date
         date_string = data.get("expiration_date", "")
         if len(date_string) > 0:
-            expiration_date = datetime.strptime(date_string, "yyyy-MM-dd").date()
+            expiration_date = datetime.strptime(date_string, "%Y-%m-%d").date()
             status = "temporary"
         else:
             expiration_date = None
