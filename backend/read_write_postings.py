@@ -47,6 +47,7 @@ class Postings(Base):
     description = Column(String)
     external_url = Column(String)
     status = Column(String)
+    user_id = Column(String)
     geometry = Column(Geometry(geometry_type="POINT", srid=4326))
 
 
@@ -63,6 +64,7 @@ class DeletedPosts(Base):
     description = Column(String)
     external_url = Column(String)
     status = Column(String)
+    user_id = Column(String)
     geometry = Column(Geometry("POINT"))
 
     deleted_at = Column(DateTime)
@@ -106,6 +108,7 @@ def insert_posting(data, nr_photos: int = 1):
             subcategory=data.get("subcategory", ""),
             description=data.get("description", ""),
             external_url=data.get("external_url"),
+            user_id=data.get("user_id", ""),
             status=status,
             geometry=geom,
         )

@@ -56,8 +56,11 @@ def create_posting():
     if ip_address in blocked_ips:
         return jsonify({"error": "User IP address is blocked"}), 403
 
-    post_infos = request.args.to_dict()
-    jsonify_result, error_code, new_post_id = insert_posting(post_infos, nr_photos=len(request.files))
+    post_infos = request.form.to_dict()
+    nr_photos = len(request.files.getlist("photos"))
+
+    # insert posting into database
+    jsonify_result, error_code, new_post_id = insert_posting(post_infos, nr_photos=nr_photos)
 
     # Error case: send error to frontend and slack
     if error_code != 200:
@@ -68,9 +71,10 @@ def create_posting():
     # if len(request.files) == 0:
     #     return jsonify({"error": "No image file found"}), 400
 
-    for idx, img_file in enumerate(request.files):
+    img_files = request.files.getlist("photos")
+    for idx, f in enumerate(img_files):
         img_path = os.path.join(PATH_IMAGES, f"{new_post_id}_{idx}.jpg")
-        request.files[img_file].save(img_path)
+        f.save(img_path)
         process_uploaded_image(img_path)
 
     # send message to slack
@@ -186,6 +190,7 @@ def delete_post(post_id):
             description=post.description,
             external_url=post.external_url,
             status=post.status,
+            user_id=post.user_id,
             geometry=post.geometry,
             deleted_at=datetime.now(),
             deletion_mode=mode,
