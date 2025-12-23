@@ -59,7 +59,7 @@ We may update these Terms at any time. Continued use of the App after changes ar
 
 ### 11. Contact Information
 To report abuse, objectionable content, or safety concerns, contact us at:
-Email: ninawiedemann999@gmail.com
+Email: freestuffapp@outlook.com 
 Developer: Nina Wiedemann
 
 

@@ -356,6 +356,16 @@ struct NewMachineFormView: View {
     // Function to handle the submission of the request
     private func submitRequest() {
         isLoading = true
+        
+        // check whether daily limit reached
+        let limiter = DailyPostLimiter(maxPerDay: 10)
+        let (allowed, remaining) = limiter.canPostNow()
+
+        guard allowed else {
+            finishLoading(message: "Daily limit reached. You can post again tomorrow.")
+            return
+        }
+        // check whether title and description or images are there
         if name == "" || (selectedImages.count==0 && description == "") {
             finishLoading(message: "Please enter a title and (at least) either an image or a description.")
             return
@@ -464,6 +474,7 @@ struct NewMachineFormView: View {
             print("Body:", responseText)
             
             if 200..<300 ~= statusCode {
+                limiter.recordSuccessfulPost() // increment counter of posts per day
                 DispatchQueue.main.async {
                     self.showFinishedAlert = true
                     self.presentationMode.wrappedValue.dismiss()

@@ -121,3 +121,55 @@ enum TextModeration {
         return text.filter { $0.isLetter || $0.isNumber }
     }
 }
+
+final class DailyPostLimiter {
+    private let maxPerDay: Int
+    private let defaults: UserDefaults
+
+    private let countKey = "dailyPostLimiter.count"
+    private let dayKey = "dailyPostLimiter.day" // store day identifier, e.g. "2025-12-23"
+
+    init(maxPerDay: Int = 10, defaults: UserDefaults = .standard) {
+        self.maxPerDay = maxPerDay
+        self.defaults = defaults
+    }
+
+    // Returns (allowed, remaining).
+    func canPostNow() -> (Bool, Int) {
+        resetIfNewDay()
+        let count = defaults.integer(forKey: countKey)
+        let remaining = max(0, maxPerDay - count)
+        return (count < maxPerDay, remaining)
+    }
+
+    // Call only after a successful post response from the backend.
+    func recordSuccessfulPost() {
+        resetIfNewDay()
+        let count = defaults.integer(forKey: countKey)
+        defaults.set(count + 1, forKey: countKey)
+    }
+
+    func reset() {
+        defaults.removeObject(forKey: countKey)
+        defaults.removeObject(forKey: dayKey)
+    }
+
+    private func resetIfNewDay() {
+        let today = Self.dayIdentifier(for: Date())
+        let storedDay = defaults.string(forKey: dayKey)
+
+        if storedDay != today {
+            defaults.set(today, forKey: dayKey)
+            defaults.set(0, forKey: countKey)
+        }
+    }
+
+    private static func dayIdentifier(for date: Date) -> String {
+        // Use local calendar day.
+        let cal = Calendar.current
+        let y = cal.component(.year, from: date)
+        let m = cal.component(.month, from: date)
+        let d = cal.component(.day, from: date)
+        return String(format: "%04d-%02d-%02d", y, m, d)
+    }
+}
