@@ -18,19 +18,21 @@ let default_switches: [String: Bool] = [
 class SettingsViewController: UITableViewController {
     
     @IBOutlet weak var navigationbar: UINavigationItem!
-//    @IBOutlet weak var pushSwitch: UISwitch!
+    //    @IBOutlet weak var pushSwitch: UISwitch!
     @IBOutlet weak var reportProblemButton: UIButton!
-//    @IBOutlet weak var radiusSlider: UISlider!
+    //    @IBOutlet weak var radiusSlider: UISlider!
     @IBOutlet weak var clusterPinsSwitch: UISwitch!
     // button for viewing terms and services
     @IBOutlet weak var termsAndServicesButton: UIButton!
+    // button to edit blocked users
+    @IBOutlet weak var editBlockedUsersButton: UIButton!
     
     static var clusterHasChanged = false
-
+    
     
     override func viewDidLoad() {
         super.viewDidLoad()
-
+        
         if #available(iOS 13.0, *) {
             overrideUserInterfaceStyle = .light
             self.navigationbar.standardAppearance = UINavigationBarAppearance()
@@ -41,23 +43,25 @@ class SettingsViewController: UITableViewController {
         reportProblemButton.addTarget(self, action: #selector(reportProblem), for: .touchUpInside)
         
         termsAndServicesButton.addTarget(self, action: #selector(openURL), for: .touchUpInside)
-//
-//        // push notification button
-//        pushSwitch.isOn =  UserDefaults.standard.bool(forKey: "switchState")
-//        pushSwitch.addTarget(self, action: #selector(setPushNotifications), for: .valueChanged)
+        //
+        //        // push notification button
+        //        pushSwitch.isOn =  UserDefaults.standard.bool(forKey: "switchState")
+        //        pushSwitch.addTarget(self, action: #selector(setPushNotifications), for: .valueChanged)
         
         // initialize radius user default for the first time:
         let user_settings = UserDefaults.standard
         
-//        // slider
-//        radiusSlider.value = user_settings.float(forKey: "radius")
-//        radius = Double(radiusSlider.value)
-//        radiusSlider.addTarget(self, action: #selector(sliderValueDidChange(_:)), for: .valueChanged)
-//        radiusSlider.isContinuous = false
-//        
+        //        // slider
+        //        radiusSlider.value = user_settings.float(forKey: "radius")
+        //        radius = Double(radiusSlider.value)
+        //        radiusSlider.addTarget(self, action: #selector(sliderValueDidChange(_:)), for: .valueChanged)
+        //        radiusSlider.isContinuous = false
+        //
         // cluster switch
         clusterPinsSwitch.isOn = user_settings.value(forKey: "clusterPinSwitch") as? Bool ?? default_switches["clusterPinSwitch"] as! Bool
         clusterPinsSwitch.addTarget(self, action: #selector(clusterPins), for: .valueChanged)
+        
+        editBlockedUsersButton.addTarget(self, action: #selector(showBlockedView), for: .touchUpInside)
     }
     
     @objc func reportProblem (sender: UIButton!){
@@ -66,10 +70,10 @@ class SettingsViewController: UITableViewController {
         ).addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "error"
         UIApplication.shared.open(URL(string:mailtostring )!)
     }
-
+    
     @objc func clusterPins(sender:UISwitch!) {
         let defaultsKey: String = "clusterPinSwitch"
-     
+        
         UserDefaults.standard.set(sender.isOn, forKey: defaultsKey)
         UserDefaults.standard.synchronize()
         
@@ -93,6 +97,10 @@ class SettingsViewController: UITableViewController {
         }
     }
     
+    @objc private func showBlockedView(sender: UIButton!) {
+        let vc = BlockedUsersViewController()
+        navigationController?.pushViewController(vc, animated: true)
+    }
     // PUSH NOTIFICATION CODE
 //    // Function for radius slider for push notifications
 //    @objc func sliderValueDidChange(_ sender:UISlider!)

@@ -23,8 +23,9 @@ class Artwork: NSObject, MKAnnotation {
     let category: String
     let subcategory: String
     let photoPaths : [String]
+    let userID: String
     
-    init(title: String, postDescription: String, link: String, status: String, coordinate: CLLocationCoordinate2D, id: Int, time_posted: String, time_expiration: String, category: String, subcategory: String, photoPaths: [String]) {
+    init(title: String, postDescription: String, link: String, status: String, coordinate: CLLocationCoordinate2D, id: Int, time_posted: String, time_expiration: String, category: String, subcategory: String, photoPaths: [String], userID: String) {
         self.title = title
         self.postDescription = postDescription
         self.coordinate = coordinate
@@ -38,6 +39,7 @@ class Artwork: NSObject, MKAnnotation {
         self.category = category
         self.subcategory = subcategory
         self.photoPaths = photoPaths
+        self.userID = userID
         
         super.init()
     }
@@ -68,6 +70,7 @@ class Artwork: NSObject, MKAnnotation {
         category = (properties["category"] as? String)!
         subcategory = (properties["subcategory"] as? String)!
         photoPaths = ((properties["photo_id"] as! String).components(separatedBy: ","))
+        userID = (properties["user_id"] as? String)!
         
         super.init()
     }

@@ -105,6 +105,7 @@ def get_all_postings():
                 "description": post.description,
                 "external_url": post.external_url,
                 "status": post.status,
+                "user_id": post.user_id,
             },
         }
         features.append(feature)

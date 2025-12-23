@@ -145,44 +145,17 @@ class ViewController: UIViewController, UITextFieldDelegate {
         // each time the view appears, check colours of the pins -> maybe add again to mark pins as favourite
 //        check_json_dict()
         // check whether some setting has changed, if yes, reload all data on the map
-        if #available(iOS 14.0, *) {
-            if FilterViewController.hasChanged {
-                loadPins(checkRegionChange: false)
-                FilterViewController.hasChanged = false
-            }
+        if FilterViewController.hasChanged {
+            loadPins(checkRegionChange: false)
+            FilterViewController.hasChanged = false
         }
         if SettingsViewController.clusterHasChanged {
             PennyMap.removeAnnotations(artworks)
-            addAnnotationsIteratively()
+            PennyMap.addAnnotations(artworks)
             SettingsViewController.clusterHasChanged = false
         }
     }
-    
-    func addAnnotationsIteratively() {
-        PennyMap.addAnnotations(artworks)
-        
-//     DEPRECATED code for adding artworks one by one and checking for filter, instead of loading just the relevant ones from the database
-//        let relevantUserDefauls : [String] = ["showGoodsSwitch", "showFoodSwitch"]
-//        var includedStates : [String] = []
-//        for userdefault in relevantUserDefauls {
-//            let user_settings = UserDefaults.standard
-//            let value = (user_settings.value(forKey: userdefault) as? Bool ?? default_switches[userdefault])
-//            if value! {
-//                let partStr = String( userdefault.prefix(userdefault.count - 6))
-//                includedStates.append(partStr)
-//            }
-//        }
-//
-//        for artwork in artworks {
-//            let categoryToSwitch = "show\(artwork.category)"
-//            if (includedStates.contains(categoryToSwitch)) {
-//                    PennyMap.addAnnotation(artwork)
-//            } else if (!includedStates.contains(categoryToSwitch)) {
-//                PennyMap.removeAnnotation(artwork)
-//            }
-//        }
-        
-    }
+
     
     func setDelegates(){
         PennyMap.delegate = self
@@ -442,6 +415,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
             userSettings.set("All", forKey: "selectedFoodCategory")
             userSettings.set(maxDaysToExpiration, forKey: "timePostedMax")
             userSettings.set(true, forKey: "showPermanentSwitch")
+
         }
         let showGoods = userSettings.bool(forKey: "showGoodsSwitch")
         let showFood = userSettings.bool(forKey: "showFoodSwitch")
@@ -490,15 +464,24 @@ class ViewController: UIViewController, UITextFieldDelegate {
                 // Store last bounds to prevent redundant calls later
                 self.lastFetchedBounds = (neLat: neLat, neLng: neLng, swLat: swLat, swLng: swLng)
                 
+                // get posts
                 let pinsFromServer = serverJsonAsMap.compactMap(Artwork.init)
+                
+                // remove the ones of blocked users
+                let blocked = BlockedUsersStore().blockedIds()
+                let filteredPins = pinsFromServer.filter { !blocked.contains($0.userID) }
 
-                // Update on main thread
                 DispatchQueue.main.async {
-                    self.artworks.append(contentsOf: pinsFromServer)
+                    // Replace artworks with new data
+                    self.artworks = filteredPins
+                    // Rebuild id->index mapping
+                    self.pinIdDict.removeAll(keepingCapacity: true)
                     for (ind, pin) in self.artworks.enumerated() {
                         self.pinIdDict[pin.id] = ind
                     }
-                    self.addAnnotationsIteratively()
+                    // Refresh map annotations cleanly
+                    self.PennyMap.removeAnnotations(self.PennyMap.annotations)
+                    self.PennyMap.addAnnotations(self.artworks)
                 }
 
             } catch {

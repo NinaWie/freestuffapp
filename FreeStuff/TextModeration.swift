@@ -173,3 +173,37 @@ final class DailyPostLimiter {
         return String(format: "%04d-%02d-%02d", y, m, d)
     }
 }
+
+final class BlockedUsersStore {
+    private let defaults: UserDefaults
+    private let key = "blocked_user_ids"
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+    }
+
+    func isBlocked(_ userId: String) -> Bool {
+        return blockedIds().contains(userId)
+    }
+
+    func block(_ userId: String) {
+        var set = blockedIds()
+        set.insert(userId)
+        defaults.set(Array(set), forKey: key)
+    }
+
+    func unblock(_ userId: String) {
+        var set = blockedIds()
+        set.remove(userId)
+        defaults.set(Array(set), forKey: key)
+    }
+
+    func blockedIds() -> Set<String> {
+        let arr = defaults.stringArray(forKey: key) ?? []
+        return Set(arr)
+    }
+    
+    func blockedIdsSorted() -> [String] {
+        blockedIds().sorted()
+    }
+}

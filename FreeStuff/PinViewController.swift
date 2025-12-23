@@ -28,6 +28,7 @@ class PinViewController: UITableViewController, UIImagePickerControllerDelegate,
     @IBOutlet weak var timeLabel: UILabel!
     @IBOutlet weak var categoryLabel: UILabel!
     
+    @IBOutlet weak var blockUserButton: UIButton!
     @IBOutlet weak var scamPostButton: UIButton!
     @IBOutlet weak var deletePostButton: UIButton!
     @IBOutlet weak var scrollView: UIScrollView!
@@ -51,6 +52,7 @@ class PinViewController: UITableViewController, UIImagePickerControllerDelegate,
     }
     var img_idx: Int = 0
     var imageList: [UIImage] = []
+    private let blockedUsers = BlockedUsersStore()
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -81,9 +83,11 @@ class PinViewController: UITableViewController, UIImagePickerControllerDelegate,
         submitButton.addTarget(self, action: #selector(addComment), for: .touchUpInside
         )
         
-        // remove post and scam button
+        // remove post, report and block buttons
         deletePostButton.addTarget(self, action: #selector(deletePost), for: .touchUpInside)
         scamPostButton.addTarget(self, action: #selector(scamPost), for: .touchUpInside)
+        blockUserButton.addTarget(self, action: #selector(didTapBlockUser), for: .touchUpInside)
+
         
         // Add title, address and updated
         titleLabel.numberOfLines = 0
@@ -484,6 +488,28 @@ class PinViewController: UITableViewController, UIImagePickerControllerDelegate,
         print("Invalid URL")
         hideLoadingView()
         }
+    }
+    
+    @objc private func didTapBlockUser() {
+        let userId = pinData.userID.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !userId.isEmpty else { return }
+        // Block flow
+        let alert = UIAlertController(
+            title: "Block user?",
+            message: "Blocking hides all posts from this user in your feed. You can undo this later in Settings.",
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        alert.addAction(UIAlertAction(title: "Block", style: .destructive) { _ in
+            self.blockedUsers.block(userId)
+            PinViewController.wasDeleted = true
+            self.onBlockStateChanged()
+        })
+        present(alert, animated: true)
+    }
+    
+    private func onBlockStateChanged() {
+        navigationController?.popViewController(animated: true)
     }
     
 //    func chooseImage() {
