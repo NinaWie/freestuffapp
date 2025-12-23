@@ -209,9 +209,6 @@ class PinViewController: UITableViewController, UIImagePickerControllerDelegate,
         if FOUNDIMAGE{
             self.performSegue(withIdentifier: "bigImage", sender: self)
         }
-        else{
-            chooseImage()
-        }
     }
     
     func configureView() {
@@ -314,28 +311,52 @@ class PinViewController: UITableViewController, UIImagePickerControllerDelegate,
         self.present(alertController, animated: true, completion: nil)
     }
 
-    @objc func scamPost(){
-        // Create the alert controller
-       let alertController = UIAlertController(title: "Report scam", message: "Are you sure this post is fake / scam? Please only report if you are certain this post is predatory, not if you have picked up the item or other reasons.", preferredStyle: .alert)
-       // Create the OK action
-       let okAction = UIAlertAction(title: "OK, report!", style: .default) { (_) in
+    @objc func scamPost() {
+        let sheet = UIAlertController(
+            title: "Report post",
+            message: "Choose a reason. Please only report if this content is objectionable or abusive.",
+            preferredStyle: .actionSheet
+        )
 
-           self.showLoadingView(withMessage: "Processing...")
-           self.deletePostCall(mode: "scam")
-        }
-        
-        // Create the cancel action
-        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel) { (_) in
+        for category in ReportCategory.allCases {
+            sheet.addAction(UIAlertAction(title: category.rawValue, style: .default) { _ in
+                self.confirmReport(category: category)
+            })
         }
 
-        // Add the actions to the alert controller
+        sheet.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+
+        // iPad requirement: action sheets must have a popover anchor
+        if let popover = sheet.popoverPresentationController {
+            popover.sourceView = self.view
+            popover.sourceRect = CGRect(x: self.view.bounds.midX, y: self.view.bounds.midY, width: 0, height: 0)
+            popover.permittedArrowDirections = []
+        }
+
+        present(sheet, animated: true)
+    }
+
+    private func confirmReport(category: ReportCategory) {
+        let alertController = UIAlertController(
+            title: "Confirm report",
+            message: "Report as “\(category.rawValue)”?",
+            preferredStyle: .alert
+        )
+
+        let okAction = UIAlertAction(title: "OK, report", style: .destructive) { _ in
+            self.showLoadingView(withMessage: "Processing...")
+            // Send category to backend; rename this method if it is not only “delete”
+            self.deletePostCall(mode: category.apiValue)
+        }
+
+        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
+
         alertController.addAction(okAction)
         alertController.addAction(cancelAction)
 
-        // Present the alert controller
-        self.present(alertController, animated: true, completion: nil)
-
+        present(alertController, animated: true)
     }
+
     
     func deletePostCall(mode: String){
         // set as deleted
@@ -347,6 +368,14 @@ class PinViewController: UITableViewController, UIImagePickerControllerDelegate,
 
         var request = URLRequest(url: url)
         request.httpMethod = "DELETE"
+        
+        var message_mode: String
+        if mode == "pickup" {
+            message_mode = "pickup"
+        }
+        else {
+            message_mode = "scam_delete"
+        }
 
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
             // Hide the loading view first
@@ -357,14 +386,14 @@ class PinViewController: UITableViewController, UIImagePickerControllerDelegate,
             if let error = error {
                 print("Error: \(error)")
                 DispatchQueue.main.async {
-                    self.handleResponse(type: "delete", success: false, error: error)
+                    self.handleResponse(type: message_mode, success: false, error: error)
                 }
                 return
             }
 
             // If the request is successful, display the success message
             DispatchQueue.main.async {
-                self.handleResponse(type: "delete", success: true, error: nil)
+                self.handleResponse(type: message_mode, success: true, error: nil)
             }
         }
         task.resume()
@@ -457,117 +486,117 @@ class PinViewController: UITableViewController, UIImagePickerControllerDelegate,
         }
     }
     
-    func chooseImage() {
-        if UIImagePickerController.isSourceTypeAvailable(.savedPhotosAlbum){
-            // Create the alert controller
-            let alertController = UIAlertController(title: "Attention!", message: "Your image will be shown to all users of the app! Please be considerate. Upload only images that are strictly related to the posting. With the upload, you grant the FreeStuff team the unrestricted right to process, alter, share, distribute and publicly expose this image.", preferredStyle: .alert)
-
-            // Create the OK action
-            let okAction = UIAlertAction(title: "OK", style: .default) { (_) in
-                // Show the image picker
-                let imagePicker = UIImagePickerController()
-                imagePicker.delegate = self
-                imagePicker.sourceType = .photoLibrary
-                imagePicker.allowsEditing = false
-                self.present(imagePicker, animated: true, completion: nil)
-            }
-
-            // Create the cancel action
-            let cancelAction = UIAlertAction(title: "Cancel", style: .cancel) { (_) in
-            }
-
-            // Add the actions to the alert controller
-            alertController.addAction(okAction)
-            alertController.addAction(cancelAction)
-
-            // Present the alert controller
-            self.present(alertController, animated: true, completion: nil)
-        }
-    }
-
-    func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-        self.dismiss(animated: true, completion: nil)
-    }
-
-    func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
-        
-        showLoadingView(withMessage: "Processing the image...")
-        let image = info[UIImagePickerController.InfoKey.originalImage] as! UIImage
-        // Dismiss the image picker
-        dismiss(animated: true) {
-            // Call a function to upload the image with a timeout
-            self.uploadImageWithTimeout(image)
-        }
-    }
-    
-    func uploadImageWithTimeout(_ image: UIImage) {
-        let uploadTimeout: TimeInterval = 5
-        var task: URLSessionDataTask?
-        guard let imageData = image.jpegData(compressionQuality: 1.0) else {
-            print("Failed to convert image to data")
-            hideLoadingView()
-            return
-        }
-        // call flask method to upload the image
-                guard let url = URL(string: flaskURL+"/upload_image?id=\(self.pinData.id)") else {
-                    return
-                }
-                var request = URLRequest(url: url)
-                request.httpMethod = "POST"
-
-                // Add the image data to the request body
-                let boundary = UUID().uuidString
-                request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-
-                let body = NSMutableData()
-                body.append("--\(boundary)\r\n".data(using: .utf8)!)
-                body.append("Content-Disposition: form-data; name=\"image\"; filename=\"image.jpg\"\r\n".data(using: .utf8)!)
-                body.append("Content-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
-                body.append(imageData)
-                body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
-                request.httpBody = body as Data
-
-                // Create a URLSessionDataTask to send the request
-        task = URLSession.shared.dataTask(with: request) { [weak self] (data, response, error) in
-            guard let self = self else { return }
-            // Hide the loading view first
-            DispatchQueue.main.async {
-                self.hideLoadingView()
-            }
-            // Cancel the task if it's still running
-            task?.cancel()
-            if let error = error {
-                            print("Error: \(error)")
-                            DispatchQueue.main.async {
-                                self.handleResponse(type: "image", success: false, error: error)
-                            }
-                            return
-                        }
-            // If the request is successful, display the success message
-            DispatchQueue.main.async {
-                self.handleResponse(type: "image", success: true, error: nil)
-            }
-        }
-        task?.resume()
-        // Set up a timer to handle the upload timeout
-        var timeoutTimer: DispatchSourceTimer?
-        timeoutTimer = DispatchSource.makeTimerSource()
-        timeoutTimer?.schedule(deadline: .now() + uploadTimeout)
-        timeoutTimer?.setEventHandler { [weak self] in
-            guard let self = self else { return }
-
-            DispatchQueue.main.async {
-                self.hideLoadingView() // Hide the loading view in case of timeout
-                // Display a failure message or take appropriate action
-                print("Upload timed out")
-                // Cancel the task if it's still running
-                task?.cancel()
-            }
-            // Cancel the timer
-            timeoutTimer?.cancel()
-        }
-        timeoutTimer?.resume()
-    }
+//    func chooseImage() {
+//        if UIImagePickerController.isSourceTypeAvailable(.savedPhotosAlbum){
+//            // Create the alert controller
+//            let alertController = UIAlertController(title: "Attention!", message: "Your image will be shown to all users of the app! Please be considerate. Upload only images that are strictly related to the posting. With the upload, you grant the FreeStuff team the unrestricted right to process, alter, share, distribute and publicly expose this image.", preferredStyle: .alert)
+//
+//            // Create the OK action
+//            let okAction = UIAlertAction(title: "OK", style: .default) { (_) in
+//                // Show the image picker
+//                let imagePicker = UIImagePickerController()
+//                imagePicker.delegate = self
+//                imagePicker.sourceType = .photoLibrary
+//                imagePicker.allowsEditing = false
+//                self.present(imagePicker, animated: true, completion: nil)
+//            }
+//
+//            // Create the cancel action
+//            let cancelAction = UIAlertAction(title: "Cancel", style: .cancel) { (_) in
+//            }
+//
+//            // Add the actions to the alert controller
+//            alertController.addAction(okAction)
+//            alertController.addAction(cancelAction)
+//
+//            // Present the alert controller
+//            self.present(alertController, animated: true, completion: nil)
+//        }
+//    }
+//
+//    func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+//        self.dismiss(animated: true, completion: nil)
+//    }
+//
+//    func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
+//        
+//        showLoadingView(withMessage: "Processing the image...")
+//        let image = info[UIImagePickerController.InfoKey.originalImage] as! UIImage
+//        // Dismiss the image picker
+//        dismiss(animated: true) {
+//            // Call a function to upload the image with a timeout
+//            self.uploadImageWithTimeout(image)
+//        }
+//    }
+//    
+//    func uploadImageWithTimeout(_ image: UIImage) {
+//        let uploadTimeout: TimeInterval = 5
+//        var task: URLSessionDataTask?
+//        guard let imageData = image.jpegData(compressionQuality: 1.0) else {
+//            print("Failed to convert image to data")
+//            hideLoadingView()
+//            return
+//        }
+//        // call flask method to upload the image
+//                guard let url = URL(string: flaskURL+"/upload_image?id=\(self.pinData.id)") else {
+//                    return
+//                }
+//                var request = URLRequest(url: url)
+//                request.httpMethod = "POST"
+//
+//                // Add the image data to the request body
+//                let boundary = UUID().uuidString
+//                request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+//
+//                let body = NSMutableData()
+//                body.append("--\(boundary)\r\n".data(using: .utf8)!)
+//                body.append("Content-Disposition: form-data; name=\"image\"; filename=\"image.jpg\"\r\n".data(using: .utf8)!)
+//                body.append("Content-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
+//                body.append(imageData)
+//                body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
+//                request.httpBody = body as Data
+//
+//                // Create a URLSessionDataTask to send the request
+//        task = URLSession.shared.dataTask(with: request) { [weak self] (data, response, error) in
+//            guard let self = self else { return }
+//            // Hide the loading view first
+//            DispatchQueue.main.async {
+//                self.hideLoadingView()
+//            }
+//            // Cancel the task if it's still running
+//            task?.cancel()
+//            if let error = error {
+//                            print("Error: \(error)")
+//                            DispatchQueue.main.async {
+//                                self.handleResponse(type: "image", success: false, error: error)
+//                            }
+//                            return
+//                        }
+//            // If the request is successful, display the success message
+//            DispatchQueue.main.async {
+//                self.handleResponse(type: "image", success: true, error: nil)
+//            }
+//        }
+//        task?.resume()
+//        // Set up a timer to handle the upload timeout
+//        var timeoutTimer: DispatchSourceTimer?
+//        timeoutTimer = DispatchSource.makeTimerSource()
+//        timeoutTimer?.schedule(deadline: .now() + uploadTimeout)
+//        timeoutTimer?.setEventHandler { [weak self] in
+//            guard let self = self else { return }
+//
+//            DispatchQueue.main.async {
+//                self.hideLoadingView() // Hide the loading view in case of timeout
+//                // Display a failure message or take appropriate action
+//                print("Upload timed out")
+//                // Cancel the task if it's still running
+//                task?.cancel()
+//            }
+//            // Cancel the timer
+//            timeoutTimer?.cancel()
+//        }
+//        timeoutTimer?.resume()
+//    }
     
     private func handleResponse(type: String, success: Bool, error: Error?) {
         activityIndicator?.stopAnimating()
@@ -577,8 +606,17 @@ class PinViewController: UITableViewController, UIImagePickerControllerDelegate,
                 showAlert(title: "Success", message: "Upload successful! Please reopen the post to see your comment.")
             }
             else {
-                showAlert(title: "Success", message: "Post deleted successfully"){
-                    self.navigateBackAfterDelete()
+                // pickup
+                if type == "pickup" {
+                    showAlert(title: "Success", message: "Post deleted successfully (picked up)"){
+                        self.navigateBackAfterDelete()
+                    }
+                }
+                else {
+                    // scam report
+                    showAlert(title: "Success", message: "Post reported successfully"){
+                        self.navigateBackAfterDelete()
+                    }
                 }
             }
         } else {
@@ -627,4 +665,25 @@ class PinViewController: UITableViewController, UIImagePickerControllerDelegate,
         
     }
     
+}
+
+enum ReportCategory: String, CaseIterable {
+    case spamScam = "Spam / Scam"
+    case harassment = "Harassment"
+    case sexualContent = "Sexual content"
+    case hate = "Hate"
+    case violence = "Violence"
+    case other = "Other"
+
+    /// Value you send to your backend
+    var apiValue: String {
+        switch self {
+        case .spamScam: return "spam_scam"
+        case .harassment: return "harassment"
+        case .sexualContent: return "sexual_content"
+        case .hate: return "hate"
+        case .violence: return "violence"
+        case .other: return "other"
+        }
+    }
 }

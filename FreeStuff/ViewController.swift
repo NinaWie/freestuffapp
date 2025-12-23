@@ -18,8 +18,6 @@ let closeNotifyDist = 0.3 // in km, send "you are very close" at this distance
 //var radius: Double = Double(UserDefaults.standard.float(forKey: "radius"))
 let MAX_AREA_DEGREES: Double = 1.0
 
-
-@available(iOS 13.0, *)
 class ViewController: UIViewController, UITextFieldDelegate {
 
     @IBOutlet weak var PennyMap: MKMapView!

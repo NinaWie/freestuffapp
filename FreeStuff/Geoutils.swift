@@ -3,7 +3,7 @@
 //  FreeStuff
 //
 //  Created by Nina Wiedemann on 24.04.25.
-//  Copyright © 2025 Jannis Born. All rights reserved.
+//  Copyright © 2025 Nina Wiedemann. All rights reserved.
 //
 
 import Foundation

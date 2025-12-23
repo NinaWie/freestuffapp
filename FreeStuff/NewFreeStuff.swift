@@ -177,6 +177,15 @@ struct InteractiveMapView: View {
     }
 }
 
+final class AppSession {
+    static let shared = AppSession()
+    private init() {}
+
+    lazy var anonUserId: String = {
+        (try? AnonymousUserID.getOrCreate()) ?? UUID().uuidString.lowercased()
+    }()
+}
+
 
 @available(iOS 14.0, *)
 struct NewMachineFormView: View {
@@ -351,6 +360,16 @@ struct NewMachineFormView: View {
             finishLoading(message: "Please enter a title and (at least) either an image or a description.")
             return
         }
+        // check whether too many images
+        if selectedImages.count>5 {
+            finishLoading(message: "Too many images. Please select at most 5 images.")
+            return
+        }
+        // text moderation
+        if let reason = TextModeration.blockReason(title: name, description: description) {
+            finishLoading(message: reason)
+            return
+        }
         //  format expiration date
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
@@ -360,82 +379,98 @@ struct NewMachineFormView: View {
         if isPermanent {
             expirationDateString = ""
         }
+        let user_id = AppSession.shared.anonUserId
         
-        var urlComponents = URLComponents(string: flaskURL)!
-        urlComponents.path = "/add_post"
-        urlComponents.queryItems = [
-            URLQueryItem(name: "name", value: name),
-            URLQueryItem(name: "description", value: description),
-            URLQueryItem(name: "category", value: selectedCategory.rawValue),
-            URLQueryItem(name: "subcategory", value: selectedSubcategory),
-            URLQueryItem(name: "expiration_date", value: expirationDateString),
-            URLQueryItem(name: "lon_coord", value: "\(selectedLocation.longitude)"),
-            URLQueryItem(name: "lat_coord", value: "\(selectedLocation.latitude)"),
-        ]
-        urlComponents.percentEncodedQuery = urlComponents.percentEncodedQuery?.replacingOccurrences(of: "+", with: "%2B")
-        var request = URLRequest(url: urlComponents.url!, timeoutInterval: 30)
+        // URL without query items
+        guard let url = URL(string: flaskURL)?.appendingPathComponent("add_post") else {
+            finishLoading(message: "Internal error: invalid backend URL.")
+            return
+        }
+        
+        var request = URLRequest(url: url, timeoutInterval: 30)
         request.httpMethod = "POST"
-                
-        // upload image and make request
-        let images = selectedImages
-        // Generate a boundary for multipart form data
-        let boundary = UUID().uuidString
+        
+        let boundary = "Boundary-\(UUID().uuidString)"
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-
-        let body = NSMutableData()
-
-        // Loop through the selected images and append each to the body
-        for (index, image) in images.enumerated() {
-            
-            var compressedData = image.jpegData(compressionQuality: 0.6)
-            let maxSizeKB = 500
-
-            var quality: CGFloat = 0.9
-            while let data = compressedData, data.count > maxSizeKB * 1024, quality > 0.1 {
-                quality -= 0.1
-                compressedData = image.jpegData(compressionQuality: quality)
-            }
-            guard let imageData = compressedData else {
-                finishLoading(message: "Failed to load and compress image. Please try again.")
-                return
-            }
-
-            // Append the image to the request body
+        
+        var body = Data()
+        
+        func appendField(_ name: String, _ value: String) {
             body.append("--\(boundary)\r\n".data(using: .utf8)!)
-            body.append("Content-Disposition: form-data; name=\"image\(index)\"; filename=\"image\(index).jpg\"\r\n".data(using: .utf8)!)
-            body.append("Content-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
-            body.append(imageData)
+            body.append("Content-Disposition: form-data; name=\"\(name)\"\r\n\r\n".data(using: .utf8)!)
+            body.append("\(value)\r\n".data(using: .utf8)!)
+        }
+        
+        func appendFile(fieldName: String, filename: String, mimeType: String, fileData: Data) {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"\(fieldName)\"; filename=\"\(filename)\"\r\n".data(using: .utf8)!)
+            body.append("Content-Type: \(mimeType)\r\n\r\n".data(using: .utf8)!)
+            body.append(fileData)
             body.append("\r\n".data(using: .utf8)!)
         }
         
-        // Close the multipart body by adding the boundary
-        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+        // Fields
+        appendField("name", name)
+        appendField("description", description)
+        appendField("category", selectedCategory.rawValue)
+        appendField("subcategory", selectedSubcategory)
+        appendField("expiration_date", expirationDateString)
+        appendField("lon_coord", "\(selectedLocation.longitude)")
+        appendField("lat_coord", "\(selectedLocation.latitude)")
+        appendField("user_id", user_id)
         
-        request.httpBody = body as Data
-        
-        // Create a URLSessionDataTask to send the request
-        let task = URLSession.shared.dataTask(with: request) { (data, response, error) in
-            if error != nil {
-                finishLoading(message: "Something went wrong. Please check your internet connection and try again")
+        // image files - compress such that all images together are small enough
+        let totalBudgetKB = 500
+        let perImageKB = max(120, totalBudgetKB / max(selectedImages.count, 1))
+        let maxBytesPerImage = perImageKB * 1024
+
+        for (index, image) in selectedImages.enumerated() {
+            guard let imageData = ImageCompression.jpegDataFast(
+                image,
+                maxBytes: maxBytesPerImage,
+                maxDimension: 1280
+            ) else {
+                finishLoading(message: "Failed to compress image. Please try again.")
                 return
             }
-            // Check if a valid HTTP response was received
+
+            appendFile(
+                fieldName: "photos",
+                filename: "photo_\(index).jpg",
+                mimeType: "image/jpeg",
+                fileData: imageData
+            )
+        }
+        
+        // Close multipart 
+        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+        request.httpBody = body
+        
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                finishLoading(message: "Something went wrong. Please check your internet connection and try again")
+                print("Request error:", error)
+                return
+            }
+            
             guard let httpResponse = response as? HTTPURLResponse else {
                 finishLoading(message: "Something went wrong. Please check your internet connection and try again")
                 return
             }
-            // Extract the status code from the HTTP response
-            let statusCode = httpResponse.statusCode
             
-            // Check if the status code indicates success (e.g., 200 OK)
-            if 200 ..< 300 ~= statusCode {
-                // everything worked, finish
+            let statusCode = httpResponse.statusCode
+            let responseText = data.flatMap { String(data: $0, encoding: .utf8) } ?? "<no body>"
+            print("Status:", statusCode)
+            print("Body:", responseText)
+            
+            if 200..<300 ~= statusCode {
                 DispatchQueue.main.async {
                     self.showFinishedAlert = true
                     self.presentationMode.wrappedValue.dismiss()
                     isLoading = false
                     onPostComplete()
                 }
+                return
             }
             else {
                 if let responseData = data {
@@ -456,5 +491,59 @@ struct NewMachineFormView: View {
             }
         }
         task.resume()
+    }
+}
+
+
+enum ImageCompression {
+
+    static func jpegDataFast(
+        _ image: UIImage,
+        maxBytes: Int,
+        maxDimension: CGFloat = 1280
+    ) -> Data? {
+        let resized = resize(image, maxDimension: maxDimension)
+        // 3 quick attempts
+        let qualities: [CGFloat] = [0.65, 0.45, 0.30]
+        var lastData: Data?
+
+        for q in qualities {
+            if let d = resized.jpegData(compressionQuality: q) {
+                lastData = d
+                if d.count <= maxBytes { return d }
+            }
+        }
+
+        // Optional: one extra downscale step if still too large (keeps it fast)
+        if let d = lastData, d.count > maxBytes {
+            let smaller = resize(resized, maxDimension: maxDimension * 0.75)
+            let q: CGFloat = 0.1
+            return smaller.jpegData(compressionQuality: q) ?? lastData
+        }
+
+        return lastData
+    }
+
+    private static func resize(_ image: UIImage, maxDimension: CGFloat) -> UIImage {
+        let size = image.size
+        let longSide = max(size.width, size.height)
+        guard longSide > maxDimension else { return image }
+
+        let scale = maxDimension / longSide
+        let newSize = CGSize(width: max(1, size.width * scale),
+                             height: max(1, size.height * scale))
+
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+
+        // NEW: force standard dynamic range to avoid HDR conversion logs
+        if #available(iOS 12.0, *) {
+            format.preferredRange = .standard
+        }
+
+        let renderer = UIGraphicsImageRenderer(size: newSize, format: format)
+        return renderer.image { _ in
+            image.draw(in: CGRect(origin: .zero, size: newSize))
+        }
     }
 }
