@@ -14,13 +14,13 @@ enum TextModeration {
     static func blockReason(title: String, description: String) -> String? {
         let combined = "\(title)\n\(description)"
 
-        // PII / doxxing checks first (high signal)
-        if containsEmail(combined) {
-            return "Please remove email addresses from your post."
-        }
-        if containsPhoneNumber(combined) {
-            return "Please remove phone numbers from your post."
-        }
+//        // PII / doxxing checks first (high signal)
+//        if containsEmail(combined) {
+//            return "Please remove email addresses from your post."
+//        }
+//        if containsPhoneNumber(combined) {
+//            return "Please remove phone numbers from your post."
+//        }
 
         // Objectionable content checks
         if containsBannedTerm(combined) {
@@ -37,10 +37,17 @@ enum TextModeration {
     // MARK: - Banned term filtering (profanity/slurs/explicit sexual terms)
 
     private static let bannedTerms: Set<String> = [
-        // PROFANITY
-        "fuck", "bitch", "asshole",
-        // EXPLICIT SEXUAL TERMS
-        "porn", "nude",
+        // Strong profanity / insults
+        "fuck", "fucking", "motherfucker", "bullshit",
+        "bitch", "bastard", "asshole", " ass ", " dick ", "prick",
+        "cunt", "pussy", "wanker", "idiot", "moron", "retard",
+        "whore", " slut ",
+
+        // Sexual content (explicit / pornographic)
+        " porn", "porno", "pornography",
+        " nude ", "nudes", "naked", "nudity",
+        "sexy", "blowjob", "handjob", "rimjob",
+        " anal ", "ejaculate", "masturbate", "masturbation",
     ]
 
     private static func containsBannedTerm(_ text: String) -> Bool {
@@ -63,17 +70,26 @@ enum TextModeration {
     // MARK: - Threat language (lightweight heuristics)
 
     private static let threatPhrases: [String] = [
-        "kill you", "i will kill", "hurt you", "i will hurt",
-        "shoot you", "i will shoot", "stab you", "i will stab",
-        "bomb", "i will find you"
+        // Generic threats
+        "kill you", "i'll kill", "i will kill", "going to kill",
+        "hurt you", "i'll hurt", "i will hurt",
+        "beat you", "i'll beat", "i will beat", "going to beat",
+        "attack you", "i'll attack", "i will attack",
+        // Weapons / violent actions
+        "shoot you", "i'll shoot", "i will shoot", "going to shoot",
+        "stab you", "i'll stab", "i will stab", "going to stab",
+        "rape you", "i'll rape", "i will rape", "going to rape",
+        "strangle you", "choke you", " bomb ",
+        // Stalking / intimidation
+        "i will find you", "i'll find you", "find where you live",
+        "i know where you live", "watching you", "i'm watching you",
+        "doxx", "doxxing",
     ]
 
     private static func containsThreateningLanguage(_ text: String) -> Bool {
         let n = normalize(text)
         return threatPhrases.contains(where: { n.contains($0) })
     }
-
-    // MARK: - Doxxing / PII patterns
 
     private static func containsEmail(_ text: String) -> Bool {
         // A practical email regex (not perfect, good enough for filtering).
