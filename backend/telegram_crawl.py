@@ -19,21 +19,21 @@ from telegram_utils.utils import merge_rows_postprocessing, optimize_img_file_si
 from app import post_to_slack
 
 chat_name_mapping = {
-        131336840: "Goods", # Test chat
-        1001343503814: "Food", # food id
-        1001280863188: "Goods", # old id for unkommerzieller
-        1280863188: "Goods", # new id for unkommerzieller
-        -1001343503814: "Food", # msg.chat_id for foodwaste
-        -1001280863188: "Goods" # msg.chat_id for unkommerzieller
-        }
+    131336840: "Goods",  # Test chat
+    1001343503814: "Food",  # food id
+    1001280863188: "Goods",  # old id for unkommerzieller
+    1280863188: "Goods",  # new id for unkommerzieller
+    -1001343503814: "Food",  # msg.chat_id for foodwaste
+    -1001280863188: "Goods",  # msg.chat_id for unkommerzieller
+}
 chat_url_mapping = {
     1001280863188: "https://t.me/+TFhr1DGsGxWWcDMA",
     -1001280863188: "https://t.me/+TFhr1DGsGxWWcDMA",
     1280863188: "https://t.me/+TFhr1DGsGxWWcDMA",
     1001343503814: "https://t.me/joinchat/LRqD-FAUPcYj8DLSoSaHjw",
-    -1001343503814: "https://t.me/joinchat/LRqD-FAUPcYj8DLSoSaHjw"
+    -1001343503814: "https://t.me/joinchat/LRqD-FAUPcYj8DLSoSaHjw",
 }
-    
+
 DOWNLOAD_IMAGES = True
 DEBUGGING = False
 
@@ -41,15 +41,18 @@ SUPPORT_MULTIPLE_IMAGES = False  # Whether to support multiple images in a singl
 SUPPORT_SENDER_MERGE = False  # Whether to merge messages from the same sender
 INCLUDE_ONLY_PLZ = False
 
+
 def check_msg_relevant(msg):
     return msg.text is None or not (
         "suche" in msg.text.lower() or "kein kaufen/verkaufen hier" in msg.text.lower() or "?" in msg.text
     )
 
+
 headings = {
-    "Goods": "**Taken from Telegram Chat Unkommerzieller Marktplatz Zuerich**\n", 
-    "Food": "**Taken from Telegram Chat Stop Foodwaste in Zueri**\n"
+    "Goods": "**Taken from Telegram Chat Unkommerzieller Marktplatz Zuerich**\n",
+    "Food": "**Taken from Telegram Chat Stop Foodwaste in Zueri**\n",
 }
+
 
 async def download_img(msg, id_current, client=None):
     """Download potential images from a message."""
@@ -57,35 +60,23 @@ async def download_img(msg, id_current, client=None):
     if SUPPORT_MULTIPLE_IMAGES and msg.grouped_id:
         assert client is not None, "Client must be provided for grouped messages"
         print("Downloading album with grouped_id:", msg.grouped_id)
-        album_msgs = await client.get_messages(
-            msg.chat_id,
-            filter=None,
-            min_id=0,
-            limit=5
-        )
+        album_msgs = await client.get_messages(msg.chat_id, filter=None, min_id=0, limit=5)
         album_msgs = [m for m in album_msgs if m.grouped_id == msg.grouped_id]
         for i, m in enumerate(reversed(album_msgs)):  # preserve original order
             await m.download_media(file=os.path.join(IMG_OUT_PATH, f"{id_current}_{i}.jpg"))
     else:
         # thumb =0 was super small, thumb=3 seemed pretty much the original size
-        await msg.download_media(
-            file=os.path.join(IMG_OUT_PATH, f"{id_current}_0.jpg"), thumb=1
-        )
-
+        await msg.download_media(file=os.path.join(IMG_OUT_PATH, f"{id_current}_0.jpg"), thumb=1)
 
 
 def handle_incoming_message(msg, last_msg, chat_nr):
     # get type (Food or Goods)
     chat_type = chat_name_mapping[chat_nr]
-    
+
     # get name -  can be None
     if msg.sender is not None:
         sender_name = msg.sender.first_name
-        sender_name = (
-            sender_name + msg.sender.last_name
-            if msg.sender.last_name is not None
-            else sender_name
-        )
+        sender_name = sender_name + msg.sender.last_name if msg.sender.last_name is not None else sender_name
     else:
         sender_name = None
 
@@ -102,7 +93,7 @@ def handle_incoming_message(msg, last_msg, chat_nr):
             last_msg["photo_id"].append("_0")  # append new photo id
             return last_msg, True
 
-    expire_date = (msg.date + pd.Timedelta(days=3)).strftime("%d. %b %Y")
+    expire_date = (msg.date + pd.Timedelta(days=3)).strftime("%Y-%m-%d")
 
     # add the message and metadata
     msg_dict = {
@@ -135,10 +126,7 @@ async def get_history(api_config, download_images=DOWNLOAD_IMAGES):
     last_update = get_last_updated()
     message_list = []
 
-
-    async with TelegramClient(
-        "history_session", api_config["api_id"], api_config["api_hash"]
-    ) as client:
+    async with TelegramClient("history_session", api_config["api_id"], api_config["api_hash"]) as client:
         await client.start(phone="+4917663009436")
         # # THIS NEEDS TO BE DONE THE FIRST TIME IT RUNS!
         # me = await client.get_me()
@@ -147,12 +135,10 @@ async def get_history(api_config, download_images=DOWNLOAD_IMAGES):
         # async for dialog in client.iter_dialogs():
         #     if "Food" in dialog.name:
         #         print(dialog.name, dialog.id)
-            
+
         for chat_nr in [1280863188, 1001343503814]:
             # iterate over the messages in the chat
-            async for msg in client.iter_messages(
-                chat_nr, 20
-            ): 
+            async for msg in client.iter_messages(chat_nr, 20):
                 # debugging: skip searching
                 # if msg.date < last_update[chatType]:
                 #     print(chatType, "ENDING HERE")
@@ -174,7 +160,7 @@ async def get_history(api_config, download_images=DOWNLOAD_IMAGES):
                     assert len(msg_w_coords) == 1, "Expected only one row in GeoDataFrame"
                     # print("MSG WITH COORDS", msg_w_coords.iloc[0].to_dict())
                     # print(msg)
-                    has_photo= msg.photo is not None # TODO: handle multiple photos
+                    has_photo = msg.photo is not None  # TODO: handle multiple photos
                     jsonify_result, error_code, new_post_id = insert_posting(
                         msg_w_coords.iloc[0].to_dict(), nr_photos=int(has_photo)
                     )
@@ -193,7 +179,6 @@ async def get_history(api_config, download_images=DOWNLOAD_IMAGES):
                     message_list.append(msg_dict)
 
 
-
 global prev_msg
 prev_msg = None
 
@@ -201,7 +186,7 @@ prev_msg = None
 def get_online(api_config):
     with TelegramClient("anon", api_config["api_id"], api_config["api_hash"]) as client:
 
-        @client.on(events.NewMessage(chats=[131336840, 1280863188, 1001343503814])) # TODO: delete test chat
+        @client.on(events.NewMessage(chats=[131336840, 1280863188, 1001343503814]))  # TODO: delete test chat
         async def handle_chat_events(event):
             msg = event.message
             if not check_msg_relevant(msg):
@@ -231,11 +216,11 @@ def get_online(api_config):
                 # get coordinates
                 msg_as_df = pd.DataFrame([msg_dict])
                 msg_w_coords = create_geojson(msg_as_df, allow_only_zip=INCLUDE_ONLY_PLZ)
-                
+
                 # add if we found a location
                 if len(msg_w_coords) > 0:
                     assert len(msg_w_coords) == 1, "Expected only one row in GeoDataFrame"
-                    has_photo = msg.photo is not None # TODO: handle multiple photos
+                    has_photo = msg.photo is not None  # TODO: handle multiple photos
                     jsonify_result, error_code, new_post_id = insert_posting(
                         msg_w_coords.iloc[0].to_dict(), nr_photos=int(has_photo)
                     )
@@ -256,6 +241,6 @@ if __name__ == "__main__":
     with open("telegram_utils/api_config.json", "r") as infile:
         api_config = json.load(infile)
     if DEBUGGING:
-        asyncio.run(get_history(api_config)) # for testing
+        asyncio.run(get_history(api_config))  # for testing
     else:
         get_online(api_config)

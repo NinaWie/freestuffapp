@@ -4,6 +4,7 @@ import os
 
 import pandas as pd
 
+
 def load_plz_names():
     with open(os.path.join("telegram_utils", "raw_geodata", "place_names.json"), "r") as infile:
         plz_names = json.load(infile)
