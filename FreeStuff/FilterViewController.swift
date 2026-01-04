@@ -24,7 +24,9 @@ class FilterViewController: UITableViewController {
     @IBOutlet weak var goodsCategoryLabel: UILabel!
     @IBOutlet weak var goodsCategorySelection: UIButton!
     
+
     @IBOutlet weak var maxDaysLabel: UILabel!
+
     @IBOutlet weak var timePostedSlider: UISlider!
     @IBOutlet weak var permanentPostsSwitch: UISwitch!
     @IBOutlet weak var foodCategorySelection: UIButton!
