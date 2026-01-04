@@ -51,7 +51,8 @@ class PinViewController: UITableViewController, UIImagePickerControllerDelegate,
         }
     }
     var img_idx: Int = 0
-    var imageList: [UIImage] = []
+    var imageDict: [Int: UIImage] = [:]
+    private var tappedImageIndex: Int?
     private let blockedUsers = BlockedUsersStore()
     
     override func viewDidLoad() {
@@ -136,7 +137,8 @@ class PinViewController: UITableViewController, UIImagePickerControllerDelegate,
             if let data = try? Data(contentsOf: url) {
                 if let image = UIImage(data: data) {
                     DispatchQueue.main.async {
-                        self?.imageList.append(image)
+                        let idx = self?.img_idx ?? 0
+                        self?.imageDict[idx] = image
                         FOUNDIMAGE = true
                         let imageView = UIImageView(image: image)
                         //        // initialize tap gesture to enlarge image
@@ -157,6 +159,7 @@ class PinViewController: UITableViewController, UIImagePickerControllerDelegate,
     func layoutImageView(_ imageView: UIImageView, index: Int) {
             let xPosition = view.frame.width * CGFloat(index)
             imageView.frame = CGRect(x: xPosition, y: 0, width: view.frame.width, height: scrollView.frame.height)
+            imageView.tag = index
             img_idx += 1
         }
     
@@ -211,6 +214,8 @@ class PinViewController: UITableViewController, UIImagePickerControllerDelegate,
     @objc func imageTapped(tapGestureRecognizer: UITapGestureRecognizer)
     {
         if FOUNDIMAGE{
+            guard let tappedView = tapGestureRecognizer.view else { return }
+            tappedImageIndex = tappedView.tag
             self.performSegue(withIdentifier: "bigImage", sender: self)
         }
     }
@@ -684,9 +689,9 @@ class PinViewController: UITableViewController, UIImagePickerControllerDelegate,
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         if (segue.identifier == "bigImage") {
             let destinationViewController = segue.destination as! ZoomViewController
-            destinationViewController.images = imageList
-            let currentPosition = scrollView.contentOffset.x / scrollView.frame.width
-            destinationViewController.scrollPosition = currentPosition
+            if let idx = tappedImageIndex {
+                destinationViewController.image = imageDict[idx]
+            }
         }
         
     }
