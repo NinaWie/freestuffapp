@@ -20,7 +20,7 @@ let MAX_AREA_DEGREES: Double = 1.0
 
 class ViewController: UIViewController, UITextFieldDelegate {
 
-    @IBOutlet weak var PennyMap: MKMapView!
+    @IBOutlet weak var FreeStuffMap: MKMapView!
     @IBOutlet weak var ownLocation: UIButton!
     @IBOutlet var toggleMapButton: UIButton!
     
@@ -33,6 +33,10 @@ class ViewController: UIViewController, UITextFieldDelegate {
     @IBOutlet var tableView: UITableView!
     
     @IBOutlet weak var settingsbutton: UIButton!
+    
+    private var zoomHintView: ZoomHintView?
+    var reloadWorkItem: DispatchWorkItem?
+    var postsAreTruncated: Bool = false
     
     let regionInMeters: Double = 20000
     // Array for annotation database
@@ -48,7 +52,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     var lastClosestID: Int = -1
     
     // To display the search results
-    lazy var locationResult : UITableView = UITableView(frame: PennyMap.frame)
+    lazy var locationResult : UITableView = UITableView(frame: FreeStuffMap.frame)
     var tableShown: Bool = false
     
     //  Map type + button
@@ -76,6 +80,18 @@ class ViewController: UIViewController, UITextFieldDelegate {
 //            radius = 2.0
 //            UserDefaults.standard.set(radius, forKey: "radius")
 //        }
+        
+        // Helper for hint that the user needs to zoom in
+        let hint = ZoomHintView()
+        view.addSubview(hint)
+        hint.translatesAutoresizingMaskIntoConstraints = false
+
+        NSLayoutConstraint.activate([
+            hint.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            hint.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -80)
+        ])
+        zoomHintView = hint
+
         
         // Set up search bar
         searchController.searchResultsUpdater = self
@@ -116,7 +132,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         setDelegates()
         
         // Register the functions to create annotated pins
-        PennyMap.register(
+        FreeStuffMap.register(
             ArtworkMarkerView.self,
             forAnnotationViewWithReuseIdentifier:MKMapViewDefaultAnnotationViewReuseIdentifier
         )
@@ -124,11 +140,19 @@ class ViewController: UIViewController, UITextFieldDelegate {
         let button = UIButton()
         button.frame = CGRect(x: 150, y: 150, width: 100, height: 50)
         self.view.addSubview(button)
-        
-        addMapTrackingButton()
-        addSettingsButton()
-        toggleMapTypeButton()
-        addNewButton()
+
+        // filter screen button
+        setupRoundIconButton(settingsbutton, systemName: "line.3.horizontal.decrease")
+        // new stuff button
+        setupRoundIconButton(newStuffButton, systemName: "plus", action: #selector(postNewStuff))
+        // toggle map button
+        setupRoundIconButton(toggleMapButton, systemName: "square.stack.3d.up.fill", action: #selector(changeMapType))
+        // addMapTracking Button
+        setupRoundIconButton(
+            ownLocation,
+            systemName: "location",
+            action: #selector(centerMapOnUserButtonClicked)
+        )
     
         // Check whether version is new
         VersionManager.shared.showVersionInfoAlertIfNeeded()
@@ -150,51 +174,22 @@ class ViewController: UIViewController, UITextFieldDelegate {
             FilterViewController.hasChanged = false
         }
         if SettingsViewController.clusterHasChanged {
-            PennyMap.removeAnnotations(artworks)
-            PennyMap.addAnnotations(artworks)
+            FreeStuffMap.removeAnnotations(artworks)
+            FreeStuffMap.addAnnotations(artworks)
             SettingsViewController.clusterHasChanged = false
         }
     }
 
     
     func setDelegates(){
-        PennyMap.delegate = self
-        PennyMap.showsScale = true
-        PennyMap.showsPointsOfInterest = true
+        FreeStuffMap.delegate = self
+        FreeStuffMap.showsScale = true
+        FreeStuffMap.showsPointsOfInterest = true
         locationResult.delegate = self
         locationResult.dataSource = self
         searchController.searchBar.delegate = self
     }
     
-    
-    // center to own location
-    func addMapTrackingButton(){
-        let image = UIImage(systemName: "location", withConfiguration: UIImage.SymbolConfiguration(pointSize: 17, weight: .bold, scale: .large))?.withTintColor(.white)
-        ownLocation.backgroundColor = .white
-        ownLocation.layer.cornerRadius = 0.5 * ownLocation.bounds.size.width
-        ownLocation.clipsToBounds = true
-        ownLocation.setImage(image, for: .normal)
-        ownLocation.imageView?.contentMode = .scaleAspectFit
-        ownLocation.addTarget(self, action: #selector(ViewController.centerMapOnUserButtonClicked), for: .touchUpInside)
-        
-        addShadow(button: ownLocation)
-        
-        PennyMap.addSubview(ownLocation)
-    }
-    
-    func addSettingsButton(){
-        let image = UIImage(systemName: "line.3.horizontal.decrease", withConfiguration: UIImage.SymbolConfiguration(pointSize: 16, weight: .bold, scale: .large))?.withTintColor(.gray)
-        settingsbutton.backgroundColor = .white
-        settingsbutton.layer.cornerRadius = 0.5 * settingsbutton.bounds.size.width
-        settingsbutton.clipsToBounds = true
-        settingsbutton.setImage(image, for: .normal)
-        settingsbutton.imageView?.contentMode = .scaleAspectFit
-
-        // Add shadow
-        addShadow(button: settingsbutton)
-
-        PennyMap.addSubview(settingsbutton)
-    }
     
     @objc func configButtonTapped() {
         // go to configuration screen
@@ -206,20 +201,53 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.performSegue(withIdentifier: "ShowAboutViewController", sender: self)
     }
     
-    func addNewButton(){
-        let image = UIImage(systemName: "plus", withConfiguration: UIImage.SymbolConfiguration(pointSize: 16, weight: .bold, scale: .large))?.withTintColor(.gray)
-        newStuffButton.setTitle("", for: .normal)
-        newStuffButton.backgroundColor = .white
-        newStuffButton.layer.cornerRadius = 0.5 * newStuffButton.bounds.size.width
-        newStuffButton.clipsToBounds = true
-        newStuffButton.setImage(image, for: .normal)
-        newStuffButton.imageView?.contentMode = .scaleAspectFit
+    private func applyRoundIconButtonStyle(_ button: UIButton) {
+        // Common visuals
+        button.setTitle(nil, for: .normal)
+        button.backgroundColor = .white
+        button.layer.cornerRadius = 0.5 * button.bounds.size.width
+        button.clipsToBounds = true
+        button.imageView?.contentMode = .scaleAspectFit
 
-        newStuffButton.addTarget(self, action: #selector(postNewStuff), for: .touchUpInside)
-        
-        addShadow(button: newStuffButton)
+        // Shadow (same for all)
+        button.layer.shadowColor = UIColor(white: 0.0, alpha: 0.25).cgColor
+        button.layer.shadowOffset = CGSize(width: 0.0, height: 2.0)
+        button.layer.shadowOpacity = 1.0
+        button.layer.shadowRadius = 0.0
+        button.layer.masksToBounds = false // required for shadow
+    }
 
-        PennyMap.addSubview(newStuffButton)
+    private func setupRoundIconButton(
+        _ button: UIButton,
+        systemName: String,
+        action: Selector? = nil,
+    ) {
+        applyRoundIconButtonStyle(button)
+
+        let config = UIImage.SymbolConfiguration(pointSize: 16, weight: .bold, scale: .large)
+        let image = UIImage(systemName: systemName, withConfiguration: config)
+        button.setImage(image, for: .normal)
+        button.tintColor = .black
+
+        if let action {
+            button.addTarget(self, action: action, for: .touchUpInside)
+        }
+
+        FreeStuffMap.addSubview(button)
+    }
+    
+    func showZoomHintIfNeeded() {
+        guard let hint = zoomHintView else { return }
+
+        if postsAreTruncated {
+            UIView.animate(withDuration: 0.25) {
+                hint.alpha = 1.0
+            }
+        } else {
+            UIView.animate(withDuration: 0.25) {
+                hint.alpha = 0.0
+            }
+        }
     }
     
     @objc func postNewStuff(){
@@ -228,7 +256,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
             if let userLocation = FreeStuff.locationManager.location?.coordinate {
                 coordinate = userLocation
             } else {
-                coordinate = self.PennyMap.centerCoordinate
+                coordinate = self.FreeStuffMap.centerCoordinate
             }
             let view = NewMachineFormView(
                 coordinate: coordinate,
@@ -240,32 +268,9 @@ class ViewController: UIViewController, UITextFieldDelegate {
             present(swiftUIViewController, animated: true)
         }
     }
-    
-    
-    func toggleMapTypeButton(){
-        
-        var toggleMapImage:UIImage = UIImage(named: "map_symbol_without_border")!
-        toggleMapImage = toggleMapImage.withRenderingMode(UIImage.RenderingMode.alwaysOriginal)
-        toggleMapButton.setImage(toggleMapImage, for: .normal)
-        toggleMapButton.imageView?.contentMode = .scaleAspectFit
-        toggleMapButton.addTarget(self, action: #selector(changeMapType), for: .touchUpInside)
-        addShadow(button: toggleMapButton)
-        
-        self.view.addSubview(toggleMapButton)
-    }
-    
-    func addShadow(button: UIButton) {
-        // Add shadow
-        button.layer.shadowColor = UIColor(red: 0, green: 0, blue: 0, alpha: 0.25).cgColor
-        button.layer.shadowOffset = CGSize(width: 0.0, height: 2.0)
-        button.layer.shadowOpacity = 1.0
-        button.layer.shadowRadius = 0.0
-        button.layer.masksToBounds = false
-//        button.layer.cornerRadius = 4.0
-    }
 
     @objc func centerMapOnUserButtonClicked() {
-        self.PennyMap.setUserTrackingMode(MKUserTrackingMode.follow, animated: true)
+        self.FreeStuffMap.setUserTrackingMode(MKUserTrackingMode.follow, animated: true)
     }
     
     // Check if global location services are enabled
@@ -287,7 +292,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     func checkLocationAuthorization() {
         switch CLLocationManager.authorizationStatus(){
         case .authorizedWhenInUse:
-            PennyMap.showsUserLocation = true
+            FreeStuffMap.showsUserLocation = true
             //locationManager.startUpdatingLocation()
             break
         case .denied:
@@ -300,7 +305,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
             // Show alert that location can not be accessed
             break
         case .authorizedAlways:
-            PennyMap.showsUserLocation = true
+            FreeStuffMap.showsUserLocation = true
             break
         }
         centerViewOnUserLocation()
@@ -315,7 +320,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
                 latitudinalMeters: regionInMeters,
                 longitudinalMeters: regionInMeters
             )
-            PennyMap.setRegion(region, animated: true)
+            FreeStuffMap.setRegion(region, animated: true)
         } else { // goes to Uetliberg otherwise
             let location = CLLocationCoordinate2D(
                 latitude: 47.349586,
@@ -326,7 +331,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
                 latitudinalMeters: regionInMeters,
                 longitudinalMeters: regionInMeters
             )
-            PennyMap.setRegion(region, animated: true)
+            FreeStuffMap.setRegion(region, animated: true)
         }
     }
     
@@ -360,7 +365,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
             // iterate over saved IDs and update status on map
             for id_machine in ids_in_dict{
                 let machine = artworks[pinIdDict[id_machine]!]
-                PennyMap.removeAnnotation(machine)
+                FreeStuffMap.removeAnnotation(machine)
                 let thisMachineStatus = statusDict[0][machine.id] ?? "unvisited"
                 machine.status = thisMachineStatus
                 // Only add the machine back to the map if it is supposed to be shown (according to settings)
@@ -370,7 +375,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
                 let shouldDisplayMachine = (user_settings.value(forKey: userdefault) as? Bool ?? default_switches[userdefault])
                 // add pin if necessary
                 if shouldDisplayMachine! {
-                    PennyMap.addAnnotation(machine)
+                    FreeStuffMap.addAnnotation(machine)
                 }
             }
         }
@@ -380,7 +385,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     @available(iOS 13.0, *)
     func loadPins(checkRegionChange: Bool = true) {
         // get region
-        let region = PennyMap.region
+        let region = FreeStuffMap.region
         let center = region.center
         let span = region.span
 
@@ -389,19 +394,15 @@ class ViewController: UIViewController, UITextFieldDelegate {
         let swLat = center.latitude - span.latitudeDelta / 2
         let swLng = center.longitude - span.longitudeDelta / 2
         
-        let area = abs(neLat - swLat) * abs(neLng - swLng)
-        if area > MAX_AREA_DEGREES {
-            showAlert(title: "Region Too Large", message: "Please zoom in to a smaller area.")
-        }
         
         // Check if the current view is inside the last fetched bounds
-        if checkRegionChange && isNewRegionInsideLastBounds(neLat: neLat, neLng: neLng, swLat: swLat, swLng: swLng) {
+        if checkRegionChange && isNewRegionInsideLastBounds(neLat: neLat, neLng: neLng, swLat: swLat, swLng: swLng) && !postsAreTruncated {
             return
         }
         
         // clear existing data
         if artworks.count > 0 {
-            PennyMap.removeAnnotations(artworks)
+            FreeStuffMap.removeAnnotations(artworks)
             artworks = []
         }
 
@@ -480,8 +481,13 @@ class ViewController: UIViewController, UITextFieldDelegate {
                         self.pinIdDict[pin.id] = ind
                     }
                     // Refresh map annotations cleanly
-                    self.PennyMap.removeAnnotations(self.PennyMap.annotations)
-                    self.PennyMap.addAnnotations(self.artworks)
+                    self.FreeStuffMap.removeAnnotations(self.FreeStuffMap.annotations)
+                    self.FreeStuffMap.addAnnotations(self.artworks)
+                    // show alert if necesssary
+                    print("Number of artworks", self.artworks.count)
+                    self.postsAreTruncated = self.artworks.count >= 150
+                    print("Is truncated", self.postsAreTruncated)
+                    self.showZoomHintIfNeeded()
                 }
 
             } catch {
@@ -524,18 +530,18 @@ class ViewController: UIViewController, UITextFieldDelegate {
         filteredArtworks = filteredArtworks.sorted(by: {$0.title! < $1.title! })
         
         // This sets the table view frame to cover exactly the entire underlying map
-        locationResult.frame = PennyMap.bounds
+        locationResult.frame = FreeStuffMap.bounds
         
         // Default height of table view cell is 44 - locationResult.rowHeight does not work
         let height = CGFloat(filteredArtworks.count * 44)
-        if height < PennyMap.bounds.height{
+        if height < FreeStuffMap.bounds.height{
             var tableFrame = locationResult.frame
             tableFrame.size.height = height
             locationResult.frame = tableFrame
         }
         
         if !tableShown {
-            PennyMap.addSubview(locationResult)
+            FreeStuffMap.addSubview(locationResult)
             tableShown = true
         }
         locationResult.reloadData()
@@ -558,13 +564,13 @@ class ViewController: UIViewController, UITextFieldDelegate {
     @objc func changeMapType(sender: UIButton!) {
          switch currMap{
              case 1:
-                PennyMap.mapType = .satellite
+                FreeStuffMap.mapType = .satellite
                  currMap = 2
              case 2:
-                PennyMap.mapType = .hybrid
+                FreeStuffMap.mapType = .hybrid
                  currMap = 3
              default:
-                PennyMap.mapType = .standard
+                FreeStuffMap.mapType = .standard
                  currMap = 1
          }
     }
@@ -579,10 +585,17 @@ extension ViewController: MKMapViewDelegate {
         view.addGestureRecognizer(gesture)
     }
     
+
     func mapView(_ mapView: MKMapView, regionDidChangeAnimated animated: Bool) {
-        // Call backend on every update of the region
-        loadPins()
+        reloadWorkItem?.cancel()
+
+        let workItem = DispatchWorkItem { [weak self] in
+            self?.loadPins()
+        }
+        reloadWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4, execute: workItem)
     }
+
 
     @objc func calloutTapped(sender:UITapGestureRecognizer) {
         guard let annotation = (sender.view as? MKAnnotationView)?.annotation as? Artwork else { return }
@@ -674,7 +687,7 @@ extension ViewController: UITableViewDelegate, UITableViewDataSource {
         self.selectedPin = filteredArtworks[indexPath.row]
         let center = self.selectedPin!.coordinate
         let region = MKCoordinateRegion(center: center, span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01))
-        self.PennyMap.setRegion(region, animated: true)
+        self.FreeStuffMap.setRegion(region, animated: true)
         locationResult.removeFromSuperview()
         tableShown = false
         searchController.searchBar.endEditing(true)

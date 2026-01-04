@@ -14,7 +14,7 @@ from geoalchemy2 import Geometry
 from geoalchemy2.shape import from_shape
 from geoalchemy2.functions import ST_MakeEnvelope
 
-MAX_RESULTS = 200
+MAX_RESULTS = 150
 
 
 def init_session():
@@ -176,7 +176,8 @@ def load_filter_postings(request_args):
         cutoff_time = datetime.utcnow() - timedelta(days=time_posted_max_days)
         query = query.filter(Postings.time_posted >= str(cutoff_time))
 
-        # hard limit: 200 posts
+        # hard limit: 200 posts (ordered by last posted)
+        query = query.order_by(Postings.time_posted.desc())
         query = query.limit(MAX_RESULTS)
 
         postings = query.all()

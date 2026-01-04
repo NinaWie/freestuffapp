@@ -86,7 +86,7 @@
                     </view>
                     <navigationItem key="navigationItem" title="FreeStuff" id="rX1-V4-AoS"/>
                     <connections>
-                        <outlet property="PennyMap" destination="gN9-vW-D6p" id="Xqe-g8-yhM"/>
+                        <outlet property="FreeStuffMap" destination="gN9-vW-D6p" id="Xqe-g8-yhM"/>
                         <outlet property="ToggleMapButton" destination="3D0-gh-Z0t" id="QOH-hV-nJt"/>
                         <outlet property="navigationbar" destination="rX1-V4-AoS" id="r8W-BC-hYt"/>
                         <outlet property="newStuffButton" destination="Ux7-A1-u36" id="1fx-DD-mCt"/>
