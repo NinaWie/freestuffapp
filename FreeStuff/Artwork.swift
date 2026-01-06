@@ -113,10 +113,24 @@ class Artwork: NSObject, MKAnnotation {
     }
 
     func colorFromGreenToRed(hoursSince: Double) -> UIColor {
-        let clampedRatio = min(max(hoursSince / maxHoursColorGradient, 0), 1)  // 0 = green, 1 = red
-        // Hue: 0.33 = green, 0 = red
-        let hue = (1 - clampedRatio) * 0.33
-        return UIColor(hue: hue, saturation: 1.0, brightness: 0.9, alpha: 1.0)
+        
+        guard maxHoursColorGradient > 0, hoursSince.isFinite else {
+            return MarkerColors.palette.first ?? .systemGreen
+        }
+
+        let ratio = min(max(hoursSince / maxHoursColorGradient, 0), 1)
+
+        let index = Int(
+            floor(ratio * Double(MarkerColors.palette.count))
+        )
+
+        // Clamp index safely
+        let clampedIndex = min(
+            max(index, 0),
+            MarkerColors.palette.count - 1
+        )
+
+        return MarkerColors.palette[clampedIndex]
     }
     
     var markerTintColor: UIColor  {

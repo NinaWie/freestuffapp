@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		8319D8D027414AC100E97D93 /* ZoomViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8319D8CF27414AC100E97D93 /* ZoomViewController.swift */; };
+		834089042F0C740B00399B86 /* AreaCaching.swift in Sources */ = {isa = PBXBuildFile; fileRef = 834089032F0C740400399B86 /* AreaCaching.swift */; };
 		83514C1B2DBA78620063189B /* Geoutils.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83514C1A2DBA785C0063189B /* Geoutils.swift */; };
 		83514C1D2DC232A60063189B /* FilterViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83514C1C2DC2329B0063189B /* FilterViewController.swift */; };
 		83562FA22EF6EA4F006E384C /* AnonymousUser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83562FA12EF6EA4A006E384C /* AnonymousUser.swift */; };
@@ -53,6 +54,7 @@
 
 /* Begin PBXFileReference section */
 		8319D8CF27414AC100E97D93 /* ZoomViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoomViewController.swift; sourceTree = "<group>"; };
+		834089032F0C740400399B86 /* AreaCaching.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AreaCaching.swift; sourceTree = "<group>"; };
 		83514C1A2DBA785C0063189B /* Geoutils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Geoutils.swift; sourceTree = "<group>"; };
 		83514C1C2DC2329B0063189B /* FilterViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilterViewController.swift; sourceTree = "<group>"; };
 		83562FA12EF6EA4A006E384C /* AnonymousUser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnonymousUser.swift; sourceTree = "<group>"; };
@@ -139,6 +141,7 @@
 				83562FA92EF6EE8C006E384C /* TermsText.swift */,
 				83562FA12EF6EA4A006E384C /* AnonymousUser.swift */,
 				83514C1A2DBA785C0063189B /* Geoutils.swift */,
+				834089032F0C740400399B86 /* AreaCaching.swift */,
 				839CF43F267B78AB00E259D9 /* SettingsViewController.swift */,
 				83514C1C2DC2329B0063189B /* FilterViewController.swift */,
 				83D226CC2620F4910050ED9E /* PinViewController.swift */,
@@ -340,6 +343,7 @@
 				83BDBBBC2D87622300B66FBD /* NewFreeStuff.swift in Sources */,
 				83562FA82EF6EDBF006E384C /* TermsGateViewController.swift in Sources */,
 				9F9F31A52300B40900C0E854 /* AppDelegate.swift in Sources */,
+				834089042F0C740B00399B86 /* AreaCaching.swift in Sources */,
 				9FF43BDA2621221A00BE3F6A /* SearchFooter.swift in Sources */,
 				839CF440267B78AB00E259D9 /* SettingsViewController.swift in Sources */,
 				83514C1B2DBA78620063189B /* Geoutils.swift in Sources */,

@@ -59,10 +59,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
     var currMap = 1
     let satelliteButton = UIButton(frame: CGRect(x: 10, y: 510, width: 50, height: 50))
     @IBOutlet weak var mapType : UISegmentedControl!
-    
-    // cache data
-    var lastFetchedBounds: (neLat: Double, neLng: Double, swLat: Double, swLng: Double)?
-    var timeLastFetched: Date? = nil
 
 
     override func viewDidLoad() {
@@ -388,24 +384,12 @@ class ViewController: UIViewController, UITextFieldDelegate {
         let region = FreeStuffMap.region
         let center = region.center
         let span = region.span
-
-        let neLat = center.latitude + span.latitudeDelta / 2
-        let neLng = center.longitude + span.longitudeDelta / 2
-        let swLat = center.latitude - span.latitudeDelta / 2
-        let swLng = center.longitude - span.longitudeDelta / 2
         
+        // define region
+        let currentRegion = CachedRegion(center: center, span: span)
+        // inflate (in order to avoid recurring requests if user moves map marginally)
+        let inflatedRegion = currentRegion.inflated(by: 0.25)
         
-        // Check if the current view is inside the last fetched bounds
-        if checkRegionChange && isNewRegionInsideLastBounds(neLat: neLat, neLng: neLng, swLat: swLat, swLng: swLng) && !postsAreTruncated {
-            return
-        }
-        
-        // clear existing data
-        if artworks.count > 0 {
-            FreeStuffMap.removeAnnotations(artworks)
-            artworks = []
-        }
-
         // get userSettings
         let userSettings = UserDefaults.standard
         // for first time usage only:
@@ -424,14 +408,34 @@ class ViewController: UIViewController, UITextFieldDelegate {
         let foodSubcategory = userSettings.string(forKey: "selectedFoodCategory") ?? "All"
         let timePostedMax = userSettings.float(forKey: "timePostedMax")
         let showPermanent = userSettings.bool(forKey: "showPermanentSwitch")
+        
+        // Caching: define keys cache entry
+        let filterKey = FilterKey(
+            showGoods: showGoods,
+            showFood: showFood,
+            goodsSubcategory: goodsSubcategory,
+            foodSubcategory: foodSubcategory,
+            timePostedMax: timePostedMax,
+            showPermanent: showPermanent
+        )
+        // check if this region is already in the cashe
+        if let cached = PinCache.shared.findCoveringEntry(
+            for: currentRegion,
+            filters: filterKey
+        ) {
+            FreeStuffMap.removeAnnotations(artworks)
+            artworks = cached.pins
+            FreeStuffMap.addAnnotations(artworks)
+            return
+        }
 
         // Construct the URL with query parameters
         var urlComponents = URLComponents(string: "\(flaskURL)/postings.json")!
         urlComponents.queryItems = [
-            URLQueryItem(name: "nelat", value: "\(neLat)"),
-            URLQueryItem(name: "nelng", value: "\(neLng)"),
-            URLQueryItem(name: "swlat", value: "\(swLat)"),
-            URLQueryItem(name: "swlng", value: "\(swLng)"),
+            URLQueryItem(name: "nelat", value: "\(inflatedRegion.neLat)"),
+            URLQueryItem(name: "nelng", value: "\(inflatedRegion.neLng)"),
+            URLQueryItem(name: "swlat", value: "\(inflatedRegion.swLat)"),
+            URLQueryItem(name: "swlng", value: "\(inflatedRegion.swLng)"),
             URLQueryItem(name: "showGoods", value: showGoods ? "1" : "0"),
             URLQueryItem(name: "showFood", value: showFood ? "1" : "0"),
             URLQueryItem(name: "goodsSubcategory", value: goodsSubcategory),
@@ -462,8 +466,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
                     .decode(data)
                     .compactMap { $0 as? MKGeoJSONFeature }
 
-                // Store last bounds to prevent redundant calls later
-                self.lastFetchedBounds = (neLat: neLat, neLng: neLng, swLat: swLat, swLng: swLng)
                 
                 // get posts
                 let pinsFromServer = serverJsonAsMap.compactMap(Artwork.init)
@@ -484,10 +486,16 @@ class ViewController: UIViewController, UITextFieldDelegate {
                     self.FreeStuffMap.removeAnnotations(self.FreeStuffMap.annotations)
                     self.FreeStuffMap.addAnnotations(self.artworks)
                     // show alert if necesssary
-                    print("Number of artworks", self.artworks.count)
                     self.postsAreTruncated = self.artworks.count >= 150
-                    print("Is truncated", self.postsAreTruncated)
                     self.showZoomHintIfNeeded()
+                    // store in cache
+                    PinCache.shared.store(
+                        pins: filteredPins,
+                        region: inflatedRegion,
+                        filters: filterKey,
+                        isTruncated: self.postsAreTruncated
+                    )
+
                 }
 
             } catch {
@@ -502,17 +510,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "OK", style: .default))
         present(alert, animated: true)
-    }
-
-    func isNewRegionInsideLastBounds(neLat: Double, neLng: Double, swLat: Double, swLng: Double) -> Bool {
-        guard let bounds = lastFetchedBounds else {
-            return false
-        }
-
-        return neLat <= bounds.neLat &&
-               neLng <= bounds.neLng &&
-               swLat >= bounds.swLat &&
-               swLng >= bounds.swLng
     }
 
     

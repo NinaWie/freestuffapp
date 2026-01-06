@@ -38,30 +38,18 @@ class ArtworkMarkerView: MKMarkerAnnotationView {
         return
       }
         clusterPins = UserDefaults.standard.bool(forKey: "clusterPinSwitch")
-        
         if !clusterPins {
             displayPriority = MKFeatureDisplayPriority.required
         }
 
         // Set marker color
         markerTintColor = artwork.markerTintColor
-        if #available(iOS 13.0, *) {
-            let key = artwork.subcategory.isEmpty ? artwork.category : artwork.subcategory
-            if let symbolName = categorySymbolMap[key] {
-                glyphImage = UIImage(systemName: symbolName)
-            } else {
-                glyphImage = UIImage(systemName: "questionmark.circle") // fallback
-            }
 
+        // Set image
+        let key = artwork.subcategory.isEmpty ? artwork.category : artwork.subcategory
+        if let symbolName = categorySymbolMap[key] {
+            glyphImage = UIImage(systemName: categorySymbolMap[key] ?? "questionmark.circle")
         }
-        
-        // Create view when marker is pressed
-        let identifier = "marker"
-        var view: MKMarkerAnnotationView
-        view = MKMarkerAnnotationView(annotation: annotation, reuseIdentifier: identifier)
-        view.canShowCallout = true
-        view.calloutOffset = CGPoint(x: -5, y: 5)
-        
         // Create right button
         rightCalloutAccessoryView = UIButton(type: .detailDisclosure)
         let mapsButton = UIButton(
@@ -81,3 +69,22 @@ class ArtworkMarkerView: MKMarkerAnnotationView {
     }
   }
 }
+
+enum MarkerColors {
+
+    // 10 discrete colors from green (fresh) to red (old)
+    static let palette: [UIColor] = {
+        let steps = 10
+        return (0..<steps).map { i in
+            let ratio = Double(i) / Double(steps - 1)   // 0 → 1
+            let hue = (1.0 - ratio) * 0.33              // 0.33 → 0.0
+            return UIColor(
+                hue: hue,
+                saturation: 1.0,
+                brightness: 0.9,
+                alpha: 1.0
+            )
+        }
+    }()
+}
+
