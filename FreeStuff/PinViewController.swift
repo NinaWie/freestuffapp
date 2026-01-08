@@ -32,6 +32,10 @@ class PinViewController: UITableViewController, UIImagePickerControllerDelegate,
     @IBOutlet weak var scamPostButton: UIButton!
     @IBOutlet weak var deletePostButton: UIButton!
     @IBOutlet weak var scrollView: UIScrollView!
+    @IBOutlet weak var pageControl: UIPageControl!
+    
+    @IBOutlet weak var scrollViewHeightConstraint: NSLayoutConstraint!
+    @IBOutlet weak var scrollViewBottomConstraint: NSLayoutConstraint!
     
     var pinData : Artwork!
     
@@ -128,9 +132,38 @@ class PinViewController: UITableViewController, UIImagePickerControllerDelegate,
         scrollView.delegate = self
         scrollView.isPagingEnabled = true
         
-        scrollView.contentSize = CGSize(width: view.frame.width * CGFloat(pinData.photoPaths.count), height: scrollView.frame.height)
+        if pinData.photoPaths.count == 1 && pinData.photoPaths[0] == "" {
+            // hide scrollView if no images
+            scrollViewHeightConstraint.constant = 0
+            scrollViewBottomConstraint.isActive = false
+        }
+        else {
+            scrollView.contentSize = CGSize(width: view.frame.width * CGFloat(pinData.photoPaths.count), height: scrollView.frame.height)
+        }
+            
+        // define page control if more than one image
+        if pinData.photoPaths.count > 1 {
+            // page control (to see what page we are on
+            pageControl.numberOfPages = pinData.photoPaths.count
+            pageControl.currentPage = 0
+            pageControl.currentPageIndicatorTintColor = .label
+            pageControl.pageIndicatorTintColor = .systemGray3
+            pageControl.translatesAutoresizingMaskIntoConstraints = false
+            pageControl.backgroundColor = UIColor.white.withAlphaComponent(0.7)
+            pageControl.layer.cornerRadius = 10
+            pageControl.layer.masksToBounds = true
+        }
+        else {
+            pageControl.isHidden = true
+        }
 
     }
+    
+    override func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        let page = Int(round(scrollView.contentOffset.x / scrollView.frame.width))
+        pageControl.currentPage = page
+    }
+
     
     func loadURL(url: URL) {
         DispatchQueue.global().async { [weak self] in

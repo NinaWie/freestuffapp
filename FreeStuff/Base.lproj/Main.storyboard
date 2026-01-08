@@ -385,9 +385,14 @@
                                                     <viewLayoutGuide key="contentLayoutGuide" id="k8O-Dw-ccv"/>
                                                     <viewLayoutGuide key="frameLayoutGuide" id="0yF-Th-fds"/>
                                                 </scrollView>
+                                                <pageControl opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" numberOfPages="3" translatesAutoresizingMaskIntoConstraints="NO" id="sox-vn-vNZ">
+                                                    <rect key="frame" x="160" y="220.33333333333334" width="73" height="26"/>
+                                                </pageControl>
                                             </subviews>
                                             <constraints>
                                                 <constraint firstItem="15l-fq-x0u" firstAttribute="top" secondItem="LOL-Ul-Er3" secondAttribute="top" id="50J-LC-r6e"/>
+                                                <constraint firstAttribute="bottom" secondItem="sox-vn-vNZ" secondAttribute="bottom" constant="1" id="8BI-Yd-GeO"/>
+                                                <constraint firstItem="sox-vn-vNZ" firstAttribute="centerX" secondItem="LOL-Ul-Er3" secondAttribute="centerX" id="ezN-re-XAT"/>
                                                 <constraint firstItem="15l-fq-x0u" firstAttribute="leading" secondItem="LOL-Ul-Er3" secondAttribute="leading" constant="10" id="lfJ-r4-4ix"/>
                                                 <constraint firstAttribute="trailing" secondItem="15l-fq-x0u" secondAttribute="trailing" constant="10" id="nTe-bq-Clb"/>
                                                 <constraint firstAttribute="bottom" secondItem="15l-fq-x0u" secondAttribute="bottom" id="wkT-yp-VNU"/>
@@ -616,8 +621,11 @@
                         <outlet property="categoryLabel" destination="bNr-nh-E34" id="In5-3m-F75"/>
                         <outlet property="commentTextField" destination="ZVp-Wt-4Vc" id="oll-Lf-RJb"/>
                         <outlet property="deletePostButton" destination="tSZ-xv-9dm" id="J8Y-Uw-1ml"/>
+                        <outlet property="pageControl" destination="sox-vn-vNZ" id="5vy-us-hrr"/>
                         <outlet property="scamPostButton" destination="SOr-TK-xkH" id="yZ4-UA-PBH"/>
                         <outlet property="scrollView" destination="15l-fq-x0u" id="RKz-TW-g6U"/>
+                        <outlet property="scrollViewBottomConstraint" destination="wkT-yp-VNU" id="rmE-7B-HO0"/>
+                        <outlet property="scrollViewHeightConstraint" destination="Kdi-rM-B9G" id="MvK-Lm-xXB"/>
                         <outlet property="submitButton" destination="1rw-nZ-kZ4" id="TGL-Cz-6Ho"/>
                         <outlet property="timeLabel" destination="s4r-gy-529" id="RjD-0d-CSC"/>
                         <outlet property="titleLabel" destination="b7j-4w-sXF" id="HBE-o3-eQg"/>
