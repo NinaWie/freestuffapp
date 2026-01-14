@@ -168,7 +168,7 @@ async def get_history(api_config, download_images=DOWNLOAD_IMAGES):
                         print("Successfully inserted posting with ID:", new_post_id)
                         if not DEBUGGING:
                             await download_img(msg, new_post_id)
-                        post_to_slack(f"New telegram post added: {msg_w_coords.iloc[0].to_dict()}")
+                        post_to_slack(f"New telegram post added: {msg_w_coords.iloc[0]['message']}")
                     else:
                         print("Error inserting posting:", jsonify_result)
 
