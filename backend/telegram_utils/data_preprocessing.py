@@ -3,8 +3,8 @@ import os
 
 import geopandas as gpd
 import pandas as pd
+import numpy as np
 
-from .utils import clean_up_images
 
 OUT_PATH = "../../images/freestuff"
 IMG_OUT_PATH = "../../images/freestuff/images"
@@ -24,9 +24,7 @@ def get_last_updated():
         # for all categories, find the last posted message
         categ_postings = current_geojson[current_geojson["category"] == category]
         if len(categ_postings) > 0:
-            last_update[category] = pd.to_datetime(
-                categ_postings["time_posted"], format=TIME_FORMAT, utc=True
-            ).max()
+            last_update[category] = pd.to_datetime(categ_postings["time_posted"], format=TIME_FORMAT, utc=True).max()
         else:
             last_update[category] = pd.to_datetime("2023-10-08 00:00:00+00:00")
 
@@ -34,6 +32,34 @@ def get_last_updated():
 def get_used_ids():
     ids_in_use = [int(i.split(".")[0]) for i in os.listdir(IMG_OUT_PATH) if i[0] != "."]
     return ids_in_use
+
+
+def jitter_lonlat(lon, lat, radius_m=20.0, rng=None):
+    EARTH_R = 6_371_000.0  # meters
+
+    def wrap_lon(lon_deg: float) -> float:
+        # wrap to [-180, 180)
+        return ((lon_deg + 180.0) % 360.0) - 180.0
+
+    def clamp_lat(lat_deg: float) -> float:
+        return float(np.clip(lat_deg, -90.0, 90.0))
+
+    rng = np.random.default_rng(rng)
+    theta = rng.uniform(0.0, 2 * np.pi)
+    r = radius_m * np.sqrt(rng.uniform(0.0, 1.0))
+    dx = r * np.cos(theta)  # meters east
+    dy = r * np.sin(theta)  # meters north
+    lat_rad = np.deg2rad(lat)
+    dlat = (dy / EARTH_R) * (180.0 / np.pi)
+    # Guard against cos(lat)=0 near poles
+    coslat = np.cos(lat_rad)
+    if abs(coslat) < 1e-12:
+        dlon = 0.0
+    else:
+        dlon = (dx / (EARTH_R * coslat)) * (180.0 / np.pi)
+    lon2 = wrap_lon(lon + dlon)
+    lat2 = clamp_lat(lat + dlat)
+    return lon2, lat2
 
 
 # load streets and plz coordinates
@@ -44,20 +70,21 @@ strasse_zu_coord = pd.read_csv(os.path.join("telegram_utils", "geodata", "strass
 zurich_zip = gpd.read_file(os.path.join("telegram_utils", "geodata", "zurich.gpkg"))
 zurich_zip = zurich_zip.set_index("name").sort_index()
 
+
 def create_geojson(data, allow_only_zip=False):
 
     # Part 1: process the one with street names
     data_with_street = data[~pd.isna(data["address"])]
-    data_with_street["address_wo_number"] = data_with_street["address"].apply(
-        lambda x: x.split(" ")[0].lower()
-    )
+    data_with_street["address_wo_number"] = data_with_street["address"].apply(lambda x: x.split(" ")[0].lower())
     data_with_street = data_with_street.merge(
         strasse_zu_coord, left_on="address_wo_number", right_on="name", how="left"
     )
+    # apply jitter
+    data_with_street["x"], data_with_street["y"] = zip(
+        *data_with_street.apply(lambda row: jitter_lonlat(row["x"], row["y"]), axis=1)
+    )
     data_with_geom = gpd.GeoDataFrame(
-        data_with_street,
-        geometry=gpd.points_from_xy(x=data_with_street["x"], y=data_with_street["y"]),
-        crs=4326
+        data_with_street, geometry=gpd.points_from_xy(x=data_with_street["x"], y=data_with_street["y"]), crs=4326
     )
     data_with_geom = data_with_geom[~data_with_geom.geometry.is_empty]
 
@@ -94,13 +121,10 @@ def create_geojson(data, allow_only_zip=False):
         # find a street
         data_with_geom = pd.concat([leftover, data_with_geom.dropna(subset=["x"])])
 
-    data_with_geom.drop(
-            ["x", "y", "name", "address_wo_number"], axis=1, inplace=True
-        )
+    data_with_geom.drop(["x", "y", "name", "address_wo_number"], axis=1, inplace=True)
     data_with_geom = gpd.GeoDataFrame(data_with_geom, geometry="geometry")
 
-    data_with_geom["name"] =  data_with_geom["message"].str[:50].str.replace("\n", " ")
-
+    data_with_geom["name"] = data_with_geom["message"].str[:50].str.replace("\n", " ")
 
     # combine zip and address
     def get_full_address(row):
@@ -116,6 +140,7 @@ def create_geojson(data, allow_only_zip=False):
 
     return data_with_geom
 
+
 def preprocess_streets(
     in_path=os.path.join("geodata", "raw", "strassennamen.json"),
     out_path=os.path.join("geodata", "strassen.csv"),
@@ -127,9 +152,7 @@ def preprocess_streets(
     #     strassen = json.load(infile)
     strasse_zu_coord = {}
     for strasse in strassen["features"]:
-        strasse_zu_coord[strasse["properties"]["lokalisationsname"].lower()] = strasse[
-            "geometry"
-        ]["coordinates"]
+        strasse_zu_coord[strasse["properties"]["lokalisationsname"].lower()] = strasse["geometry"]["coordinates"]
     strasse_zu_coord = pd.DataFrame(strasse_zu_coord, index=["x", "y"]).swapaxes(1, 0)
     strasse_zu_coord.to_csv(out_path)
 
@@ -150,23 +173,17 @@ def generate_eligible_name_list(
             eligible_name_mapping["kreis" + kreis_number] = name
 
     with open(out_path, "w") as outfile:
-        json.dump(
-            {"names": eligible_names, "name_mapping": eligible_name_mapping}, outfile
-        )
+        json.dump({"names": eligible_names, "name_mapping": eligible_name_mapping}, outfile)
 
 
-def create_zurich_data(
-    in_path="geodata/raw", out_path=os.path.join("geodata", "zurich.gpkg")
-):
+def create_zurich_data(in_path="geodata/raw", out_path=os.path.join("geodata", "zurich.gpkg")):
     # get plz polygons
     plz = gpd.read_file(os.path.join(in_path, "PLZO_PLZ.shp"))[["PLZ", "geometry"]]
     # get names for plz
     plz_orte = pd.read_csv(os.path.join(in_path, "plz_ortsnamen.csv"), delimiter=";")
     plz_orte = plz_orte[plz_orte["Ortschaftsname"] == "Zürich"]
     # merge to keep only the ones in zurich
-    plz_zurich = plz.merge(plz_orte, how="right", left_on="PLZ", right_on="PLZ")[
-        ["PLZ", "geometry"]
-    ]
+    plz_zurich = plz.merge(plz_orte, how="right", left_on="PLZ", right_on="PLZ")[["PLZ", "geometry"]]
     plz_zurich.rename({"PLZ": "name"}, axis=1, inplace=True)
     plz_zurich["name"] = plz_zurich["name"].astype(str)
 
@@ -181,6 +198,24 @@ def create_zurich_data(
     zurich_data.geometry.crs = "EPSG:2056"
     zurich_data.to_crs("EPSG:4326", inplace=True)
     zurich_data.to_file(out_path)
+
+
+def test_jitter():
+    lon = 8.5417
+    lat = 47.3769
+    data_with_street = pd.DataFrame(
+        {
+            "address": ["Bahnhofstrasse 1", "Bahnhofstrasse 2", "Bahnhofstrasse 3"],
+            "message": ["Test1", "Test2", "Test3"],
+            "x": [lon, lon, lon],
+            "y": [lat, lat, lat],
+        }
+    )
+    print(data_with_street)
+    data_with_street["x"], data_with_street["y"] = zip(
+        *data_with_street.apply(lambda row: jitter_lonlat(row["x"], row["y"]), axis=1)
+    )
+    print(data_with_street)
 
 
 if __name__ == "__main__":
