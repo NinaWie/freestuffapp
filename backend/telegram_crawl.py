@@ -271,7 +271,9 @@ def get_online(api_config):
                         await download_img(msg, new_post_id)
                         prev_msg = msg_dict
                         if time.time() - last_posted_to_slack > SLACK_INTERVAL * 60 * 60:
-                            post_to_slack(f"New telegram post added: {msg_w_coords.iloc[0].to_dict()}")
+                            post_to_slack(
+                                f"New telegram post added (source: {chat_info_mapping[msg.chat_id]}): {msg_w_coords.iloc[0]['message'].replace('\n', ' ')[:100]}"
+                            )
                             last_posted_to_slack = time.time()
                     else:
                         print("Error inserting posting:", jsonify_result)
