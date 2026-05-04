@@ -20,7 +20,7 @@ from telegram_utils.utils import merge_rows_postprocessing, optimize_img_file_si
 from app import post_to_slack
 
 SLACK_INTERVAL = 3  # interval how frequently to post to slack in hours
-last_posted_to_slack = time.time()
+last_posted_to_slack = time.time() - SLACK_INTERVAL * 60 * 60  # initialize to allow immediate posting on first run
 
 chat_name_mapping = {
     131336840: "Goods",  # Test chat
