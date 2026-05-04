@@ -63,7 +63,11 @@ def jitter_lonlat(lon, lat, radius_m=20.0, rng=None):
 
 
 # load streets and plz coordinates
-strasse_zu_coord = pd.read_csv(os.path.join("telegram_utils", "geodata", "strassen.csv"))
+STRASSEN = {
+    "zurich": pd.read_csv(os.path.join("telegram_utils", "geodata", "strassen.csv")),
+    "brutisellen": pd.read_csv(os.path.join("telegram_utils", "geodata", "brutisellen_strassen.csv")),
+    "bern": pd.read_csv(os.path.join("telegram_utils", "geodata", "bern_strassen.csv")),
+}
 
 
 # set index
@@ -71,7 +75,12 @@ zurich_zip = gpd.read_file(os.path.join("telegram_utils", "geodata", "zurich.gpk
 zurich_zip = zurich_zip.set_index("name").sort_index()
 
 
-def create_geojson(data, allow_only_zip=False):
+def create_geojson(data, allow_only_zip=False, location="zurich"):
+
+    strasse_zu_coord = STRASSEN.get(location)
+    assert (
+        strasse_zu_coord is not None
+    ), f"Location {location} not found in STRASSEN dict. Available locations: {list(STRASSEN.keys())}"
 
     # Part 1: process the one with street names
     data_with_street = data[~pd.isna(data["address"])]
@@ -80,13 +89,16 @@ def create_geojson(data, allow_only_zip=False):
         strasse_zu_coord, left_on="address_wo_number", right_on="name", how="left"
     )
     # apply jitter
-    data_with_street["x"], data_with_street["y"] = zip(
-        *data_with_street.apply(lambda row: jitter_lonlat(row["x"], row["y"]), axis=1)
-    )
-    data_with_geom = gpd.GeoDataFrame(
-        data_with_street, geometry=gpd.points_from_xy(x=data_with_street["x"], y=data_with_street["y"]), crs=4326
-    )
-    data_with_geom = data_with_geom[~data_with_geom.geometry.is_empty]
+    if len(data_with_street) == 0:
+        data_with_geom = gpd.GeoDataFrame(columns=data_with_street.columns, geometry=[])
+    else:
+        data_with_street["x"], data_with_street["y"] = zip(
+            *data_with_street.apply(lambda row: jitter_lonlat(row["x"], row["y"]), axis=1)
+        )
+        data_with_geom = gpd.GeoDataFrame(
+            data_with_street, geometry=gpd.points_from_xy(x=data_with_street["x"], y=data_with_street["y"]), crs=4326
+        )
+        data_with_geom = data_with_geom[~data_with_geom.geometry.is_empty]
 
     if allow_only_zip:
         # Part 2: Process the ones with zip but no (valid) street

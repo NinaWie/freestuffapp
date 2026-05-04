@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+import time
 
 import pandas as pd
 from sqlalchemy.orm import sessionmaker
@@ -18,13 +19,28 @@ from telegram_utils.extract_location import get_address, get_postal
 from telegram_utils.utils import merge_rows_postprocessing, optimize_img_file_size
 from app import post_to_slack
 
+SLACK_INTERVAL = 3  # interval how frequently to post to slack in hours
+last_posted_to_slack = time.time()
+
 chat_name_mapping = {
     131336840: "Goods",  # Test chat
     1001343503814: "Food",  # food id
-    1001280863188: "Goods",  # old id for unkommerzieller
-    1280863188: "Goods",  # new id for unkommerzieller
+    1001280863188: "Goods",  # old id for unkommerzieller zurich
+    1280863188: "Goods",  # new id for unkommerzieller zurich
     -1001343503814: "Food",  # msg.chat_id for foodwaste
-    -1001280863188: "Goods",  # msg.chat_id for unkommerzieller
+    -1001280863188: "Goods",  # msg.chat_id for unkommerzieller zurich
+    -1003783374822: "Food",  # msg.chat_id for foodwaste brutisellen
+    -1003594038836: "Goods",  # msg.chat_id for goods bern
+}
+chat_info_mapping = {
+    131336840: "Test chat",  # Test chat
+    1001343503814: "Food Zurich",  # food id
+    1001280863188: "Goods Zurich",  # old id for unkommerzieller zurich
+    1280863188: "Goods Zurich",  # new id for unkommerzieller zurich
+    -1001343503814: "Food Zurich",  # msg.chat_id for foodwaste
+    -1001280863188: "Goods Zurich",  # msg.chat_id for unkommerzieller zurich
+    -1003783374822: "Food Brüttisellen",  # msg.chat_id for foodwaste brutisellen
+    -1003594038836: "Goods Bern",  # msg.chat_id for goods bern
 }
 chat_url_mapping = {
     1001280863188: "https://t.me/+TFhr1DGsGxWWcDMA",
@@ -32,6 +48,16 @@ chat_url_mapping = {
     1280863188: "https://t.me/+TFhr1DGsGxWWcDMA",
     1001343503814: "https://t.me/joinchat/LRqD-FAUPcYj8DLSoSaHjw",
     -1001343503814: "https://t.me/joinchat/LRqD-FAUPcYj8DLSoSaHjw",
+    -1003783374822: "https://t.me/stop_foodwaste_bruettisellen",
+    -1003594038836: "https://t.me/+rSsc_-NCKCAyNDI0",
+}
+
+CHAT_TO_STREETS = {
+    131336840: "zurich",
+    1280863188: "zurich",
+    1001343503814: "zurich",
+    -1003783374822: "brutisellen",
+    -1003594038836: "bern",
 }
 
 DOWNLOAD_IMAGES = True
@@ -74,7 +100,7 @@ def handle_incoming_message(msg, last_msg, chat_nr):
     chat_type = chat_name_mapping[chat_nr]
 
     # get name -  can be None
-    if msg.sender is not None:
+    if msg.sender is not None and hasattr(msg.sender, "first_name"):
         sender_name = msg.sender.first_name
         sender_name = sender_name + msg.sender.last_name if msg.sender.last_name is not None else sender_name
     else:
@@ -95,17 +121,19 @@ def handle_incoming_message(msg, last_msg, chat_nr):
 
     expire_date = (msg.date + pd.Timedelta(days=3)).strftime("%Y-%m-%d")
 
+    msg_text = msg.text if msg.text is not None else ""
+
     # add the message and metadata
     msg_dict = {
         "sender": sender_name,
-        "message": msg.text,
-        "description": headings[chat_type] + msg.text,
+        "message": msg_text,
+        "description": headings[chat_type] + msg_text,
         "expiration_date": expire_date,
         "external_url": chat_url_mapping.get(chat_nr, None),  # No external URL in the messages
         "category": chat_type,
         "time_posted": msg.date,
-        "zip": get_postal(msg.text),
-        "address": get_address(msg.text),
+        "zip": get_postal(msg_text),
+        "address": get_address(msg_text),
     }
     return msg_dict, False
 
@@ -133,12 +161,13 @@ async def get_history(api_config, download_images=DOWNLOAD_IMAGES):
 
         # # Code to get IDs of chats
         # async for dialog in client.iter_dialogs():
-        #     if "Food" in dialog.name:
+        #     if "Bern" in dialog.name:
         #         print(dialog.name, dialog.id)
+        # exit()
 
-        for chat_nr in [1280863188, 1001343503814]:
+        for chat_nr in [-1003594038836]:  # 1280863188, 1001343503814, -1003783374822
             # iterate over the messages in the chat
-            async for msg in client.iter_messages(chat_nr, 20):
+            async for msg in client.iter_messages(chat_nr, 100):
                 # debugging: skip searching
                 # if msg.date < last_update[chatType]:
                 #     print(chatType, "ENDING HERE")
@@ -153,7 +182,9 @@ async def get_history(api_config, download_images=DOWNLOAD_IMAGES):
 
                 # get coordinates
                 msg_as_df = pd.DataFrame([msg_dict])
-                msg_w_coords = create_geojson(msg_as_df, allow_only_zip=INCLUDE_ONLY_PLZ)
+                msg_w_coords = create_geojson(
+                    msg_as_df, allow_only_zip=INCLUDE_ONLY_PLZ, location=CHAT_TO_STREETS[chat_nr]
+                )
 
                 # add if we found a location
                 if len(msg_w_coords) > 0:
@@ -161,15 +192,24 @@ async def get_history(api_config, download_images=DOWNLOAD_IMAGES):
                     # print("MSG WITH COORDS", msg_w_coords.iloc[0].to_dict())
                     # print(msg)
                     has_photo = msg.photo is not None  # TODO: handle multiple photos
-                    jsonify_result, error_code, new_post_id = insert_posting(
-                        msg_w_coords.iloc[0].to_dict(), nr_photos=int(has_photo)
-                    )
-                    if error_code == 200:
-                        print("Successfully inserted posting with ID:", new_post_id)
-                        if not DEBUGGING:
-                            await download_img(msg, new_post_id)
-                        post_to_slack(f"New telegram post added: {msg_w_coords.iloc[0]['message']}")
+                    if not DEBUGGING:
+                        jsonify_result, error_code, new_post_id = insert_posting(
+                            msg_w_coords.iloc[0].to_dict(), nr_photos=int(has_photo)
+                        )
                     else:
+                        error_code, new_post_id = 200, None
+                        out_dict = msg_w_coords.iloc[0].to_dict()
+                        print("========")
+                        print("Message text:", msg.text.replace("\n", " ")[:100] if msg.text else "N/A")
+                        print("Address:", out_dict.get("address", "N/A"))
+                        print("Geometry:", out_dict.get("geometry", "N/A"))
+                    if not DEBUGGING and error_code == 200:
+                        print("Successfully inserted posting with ID:", new_post_id)
+                        await download_img(msg, new_post_id)
+                        post_to_slack(
+                            f"New telegram post added (source: {chat_info_mapping[msg.chat_id]}): {msg_w_coords.iloc[0]['message']}"
+                        )
+                    elif not DEBUGGING:
                         print("Error inserting posting:", jsonify_result)
 
                 # either update or append
@@ -186,7 +226,7 @@ prev_msg = None
 def get_online(api_config):
     with TelegramClient("anon", api_config["api_id"], api_config["api_hash"]) as client:
 
-        @client.on(events.NewMessage(chats=[131336840, 1280863188, 1001343503814]))  # TODO: delete test chat
+        @client.on(events.NewMessage(chats=[131336840, 1280863188, 1001343503814, -1003783374822, -1003594038836]))
         async def handle_chat_events(event):
             msg = event.message
             if not check_msg_relevant(msg):
@@ -215,7 +255,9 @@ def get_online(api_config):
 
                 # get coordinates
                 msg_as_df = pd.DataFrame([msg_dict])
-                msg_w_coords = create_geojson(msg_as_df, allow_only_zip=INCLUDE_ONLY_PLZ)
+                msg_w_coords = create_geojson(
+                    msg_as_df, allow_only_zip=INCLUDE_ONLY_PLZ, location=CHAT_TO_STREETS[msg.chat_id]
+                )
 
                 # add if we found a location
                 if len(msg_w_coords) > 0:
@@ -228,7 +270,9 @@ def get_online(api_config):
                         print("Successfully inserted posting with ID:", new_post_id)
                         await download_img(msg, new_post_id)
                         prev_msg = msg_dict
-                        post_to_slack(f"New telegram post added: {msg_w_coords.iloc[0].to_dict()}")
+                        if time.time() - last_posted_to_slack > SLACK_INTERVAL * 60 * 60:
+                            post_to_slack(f"New telegram post added: {msg_w_coords.iloc[0].to_dict()}")
+                            last_posted_to_slack = time.time()
                     else:
                         print("Error inserting posting:", jsonify_result)
                 else:
