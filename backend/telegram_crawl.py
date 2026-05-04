@@ -54,8 +54,11 @@ chat_url_mapping = {
 
 CHAT_TO_STREETS = {
     131336840: "zurich",
+    1001280863188: "zurich",
+    -1001280863188: "zurich",
     1280863188: "zurich",
     1001343503814: "zurich",
+    -1001343503814: "zurich",
     -1003783374822: "brutisellen",
     -1003594038836: "bern",
 }
